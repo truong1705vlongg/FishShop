@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
-$user  = requireLogin();
-$lines = cart_lines((int)$user['id']);
+$user = current_user();
+$lines = current_cart_lines();
 
 $subtotal = 0; $problem = false;
 foreach ($lines as &$l) {
@@ -63,13 +63,13 @@ include __DIR__ . '/includes/header.php';
   <aside class="order-summary">
     <h2>Tóm tắt đơn hàng</h2>
     <div class="sum"><span>Tạm tính</span><span><?= money($subtotal) ?></span></div>
-    <div class="sum"><span>Phí giao hàng</span><span>Xác nhận khi giao</span></div>
     <div class="sum t"><span>Tổng cộng</span><span><?= money($subtotal) ?></span></div>
     <?php if ($problem): ?>
       <div class="alert warn">Hãy xử lý các sản phẩm được báo đỏ trước khi mua hàng.</div>
       <span class="btn block disabled" aria-disabled="true">Tiến hành mua hàng</span>
     <?php else: ?>
-      <a class="btn block" href="<?= url('checkout.php') ?>">Tiến hành mua hàng</a>
+      <a class="btn block" href="<?= url('checkout.php') ?>"><?= $user ? 'Tiến hành mua hàng' : 'Đăng nhập để đặt hàng' ?></a>
+      <?php if (!$user): ?><p class="hint">Sản phẩm trong giỏ sẽ được giữ lại sau khi đăng nhập.</p><?php endif; ?>
     <?php endif; ?>
     <a class="btn ghost block" style="margin-top:10px" href="<?= url('index.php') ?>">Tiếp tục mua sắm</a>
   </aside>

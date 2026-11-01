@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
-if (isLoggedIn()) redirect(isAdmin() ? 'admin/index.php' : 'index.php');
+if (isset($_GET['next']) && safe_customer_return($_GET['next']) !== null) $_SESSION['login_return_to'] = safe_customer_return($_GET['next']);
+if (isLoggedIn()) redirect(isAdmin() ? 'admin/index.php' : customer_login_destination());
 
 $error = '';
 $username = '';
@@ -21,9 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (($row['account_status'] ?? 'active') === 'locked') {
                 $error = 'Tài khoản này đang bị khóa. Vui lòng liên hệ Quản trị viên để được hỗ trợ.';
             } else {
-                session_regenerate_id(true);
-                $_SESSION['user_id'] = (int)$row['id'];
-                redirect('index.php');
+                try {
+                    redirect(finish_customer_login((int)$row['id']));
+                } catch (Throwable $ex) {
+                    error_log('FishShop customer login cart merge failed.');
+                    $error = 'Chưa thể khôi phục giỏ hàng. Vui lòng thử đăng nhập lại.';
+                }
             }
         } else {
             $error = 'Tên đăng nhập hoặc mật khẩu không đúng.';

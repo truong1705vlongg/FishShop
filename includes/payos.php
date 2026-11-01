@@ -109,14 +109,40 @@ function payos_sync_order_status(int $orderId): string {
         if (($data['id'] ?? '') === $linkId && ($data['status'] ?? '') === 'PAID'
             && (int)($data['amount'] ?? 0) === (int)$order['total']
             && (int)($data['amountPaid'] ?? 0) === (int)$order['total']) {
-            $pdo->prepare("UPDATE orders SET payment_status = 'paid', payos_paid_at = UTC_TIMESTAMP() WHERE id = ? AND payos_payment_link_id = ? AND status <> 'cancelled' AND payment_status <> 'paid'")
-                ->execute([$orderId, $linkId]);
-            return 'paid';
+            // The remote lookup happens outside the transaction. Lock and re-read
+            // before writing so cancellation, a new link, or another callback wins safely.
+            $pdo->beginTransaction();
+            try {
+                $currentSt = $pdo->prepare("SELECT payment_status, status, total, payos_payment_link_id FROM orders WHERE id = ? AND payment_method = 'payos' FOR UPDATE");
+                $currentSt->execute([$orderId]);
+                $current = $currentSt->fetch();
+                if ($current && $current['status'] !== 'cancelled' && $current['payment_status'] !== 'paid'
+                    && (string)$current['payos_payment_link_id'] === $linkId
+                    && (int)$current['total'] === (int)$data['amount']
+                    && (int)$current['total'] === (int)$data['amountPaid']) {
+                    $pdo->prepare("UPDATE orders SET payment_status = 'paid', payos_paid_at = UTC_TIMESTAMP() WHERE id = ? AND payos_payment_link_id = ? AND status <> 'cancelled' AND payment_status <> 'paid'")
+                        ->execute([$orderId, $linkId]);
+                }
+                $freshSt = $pdo->prepare("SELECT payment_status, status FROM orders WHERE id = ? AND payment_method = 'payos'");
+                $freshSt->execute([$orderId]);
+                $fresh = $freshSt->fetch();
+                if ($fresh && $fresh['payment_status'] === 'paid' && $fresh['status'] !== 'cancelled') {
+                    sync_order_rank($pdo, $orderId);
+                }
+                $pdo->commit();
+                return (string)($fresh['payment_status'] ?? 'unpaid');
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                throw $e;
+            }
         }
     } catch (Throwable $e) {
         error_log('FishShop PayOS status check failed (' . get_class($e) . ').');
     }
-    return (string)$order['payment_status'];
+    // Even on a timeout or unmatched response, report the persisted current value.
+    $st->execute([$orderId]);
+    $fresh = $st->fetch();
+    return (string)($fresh['payment_status'] ?? 'unpaid');
 }
 function payos_valid_signature(array $data, string $signature, string $key): bool {
     if ($signature === '') return false;

@@ -46,6 +46,7 @@ function current_user(): ?array {
                 unset($_SESSION['user_id']);
             } elseif (($user['account_status'] ?? 'active') === 'locked') {
                 unset($_SESSION['user_id']);
+                $_SESSION['account_access_error'] = 'locked';
                 $user = null;
             }
         }
@@ -61,12 +62,29 @@ function account_status_label(string $status): string {
 function requireLogin(): array {
     $u = current_user();
     if ($u === null) {
-        flash('error', 'Tài khoản của bạn đang bị khóa hoặc bạn chưa đăng nhập.');
-        if (wants_json()) { http_response_code(401); header('Content-Type: application/json'); echo json_encode(['ok' => false, 'message' => 'Tài khoản của bạn đang bị khóa hoặc bạn chưa đăng nhập.']); exit; }
+        $locked = ($_SESSION['account_access_error'] ?? '') === 'locked';
+        unset($_SESSION['account_access_error']);
+        $message = $locked ? 'Tài khoản của bạn đang bị khóa. Vui lòng liên hệ quản trị viên.' : 'Vui lòng đăng nhập để tiếp tục.';
+        if (!defined('FISHSHOP_ADMIN_PORTAL') && ($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
+            $page = basename($_SERVER['SCRIPT_NAME'] ?? '');
+            $target = $page;
+            if (in_array($page, ['product_detail.php', 'purchase_history.php', 'payment.php'], true) && isset($_GET['id']) && is_scalar($_GET['id']) && ctype_digit((string)$_GET['id']) && (int)$_GET['id'] > 0) $target .= '?id=' . (int)$_GET['id'];
+            if (safe_customer_return($target) !== null) $_SESSION['login_return_to'] = $target;
+        }
+        flash($locked ? 'error' : 'info', $message);
+        if (wants_json()) { http_response_code(401); header('Content-Type: application/json'); echo json_encode(['ok' => false, 'message' => $message]); exit; }
         redirect(defined('FISHSHOP_ADMIN_PORTAL') ? 'admin/login.php' : 'login.php');
     }
     return $u;
 }
+function finish_customer_login(int $userId): string {
+    merge_guest_cart(db(), $userId);
+    session_regenerate_id(true);
+    unset($_SESSION['csrf'], $_SESSION['account_access_error']);
+    $_SESSION['user_id'] = $userId;
+    return customer_login_destination();
+}
+
 function requireAdmin(): array {
     $u = requireLogin();
     if ($u['role'] !== 'admin') { flash('error', 'Bạn không có quyền truy cập trang quản trị.'); redirect('index.php'); }

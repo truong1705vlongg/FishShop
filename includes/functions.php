@@ -81,7 +81,7 @@ function ensure_rank_profile(PDO $pdo, int $userId): void {
 
 // Gọi bên trong transaction đang cập nhật trạng thái đơn hàng.
 function sync_order_rank(PDO $pdo, int $orderId): array {
-    $orderSt = $pdo->prepare('SELECT user_id, status, payment_status FROM orders WHERE id = ? FOR UPDATE');
+    $orderSt = $pdo->prepare('SELECT user_id, status, payment_status, total FROM orders WHERE id = ? FOR UPDATE');
     $orderSt->execute([$orderId]);
     $order = $orderSt->fetch();
     if (!$order) throw new RuntimeException('Không tìm thấy đơn hàng cần đồng bộ Rank.');
@@ -99,9 +99,7 @@ function sync_order_rank(PDO $pdo, int $orderId): array {
     $eligible = $order['status'] === 'completed' && $order['payment_status'] === 'paid';
     $amount = 0;
     if ($eligible) {
-        $amountSt = $pdo->prepare('SELECT COALESCE(SUM(price * quantity), 0) FROM order_items WHERE order_id = ?');
-        $amountSt->execute([$orderId]);
-        $amount = (int)$amountSt->fetchColumn();
+        $amount = (int)$order['total'];
     }
 
     $oldAmount = $ledger && (int)$ledger['is_active'] === 1 ? (int)$ledger['spend_amount'] : 0;
@@ -193,7 +191,7 @@ function get_cart_id(int $userId, bool $create = true): ?int {
     $id = $st->fetchColumn();
     if ($id) return (int)$id;
     if (!$create) return null;
-    db()->prepare('INSERT INTO cart (user_id) VALUES (?)')->execute([$userId]);
+    db()->prepare('INSERT INTO cart (user_id) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)')->execute([$userId]);
     return (int)db()->lastInsertId();
 }
 function cart_count(int $userId): int {
@@ -204,12 +202,104 @@ function cart_count(int $userId): int {
 // Lấy các dòng giỏ hàng cùng giá/tồn kho HIỆN TẠI từ database.
 function cart_lines(int $userId): array {
     $st = db()->prepare(
-        'SELECT ci.product_id, ci.quantity, p.name, p.price, p.image, p.stock, p.status
+        "SELECT ci.product_id, ci.quantity, p.name, p.price, p.image, p.stock,
+                CASE WHEN p.status = 'active' AND cat.status = 'active' THEN 'active' ELSE 'inactive' END AS status
          FROM cart c JOIN cart_items ci ON ci.cart_id = c.id JOIN products p ON p.id = ci.product_id
-         WHERE c.user_id = ? ORDER BY ci.id'
+         JOIN categories cat ON cat.id = p.category_id
+         WHERE c.user_id = ? ORDER BY ci.id"
     );
     $st->execute([$userId]);
     return $st->fetchAll();
+}
+
+// Giỏ của khách chưa đăng nhập chỉ giữ ID và số lượng; giá luôn đọc từ database.
+function guest_cart_items(): array {
+    $items = [];
+    foreach (is_array($_SESSION['guest_cart'] ?? null) ? $_SESSION['guest_cart'] : [] as $id => $quantity) {
+        if (count($items) >= 100) break;
+        if (ctype_digit((string)$id) && (int)$id > 0 && is_numeric($quantity) && (int)$quantity > 0) {
+            $items[(int)$id] = min(999, (int)$quantity);
+        }
+    }
+    return $items;
+}
+
+function guest_cart_lines(): array {
+    $items = guest_cart_items();
+    if (!$items) return [];
+    $st = db()->prepare("SELECT p.id AS product_id, p.name, p.price, p.image, p.stock,
+        CASE WHEN p.status = 'active' AND c.status = 'active' THEN 'active' ELSE 'inactive' END AS status
+        FROM products p JOIN categories c ON c.id = p.category_id WHERE p.id IN (" . implode(',', array_fill(0, count($items), '?')) . ')');
+    $st->execute(array_keys($items));
+    $lines = $st->fetchAll();
+    $existing = [];
+    foreach ($lines as &$line) {
+        $line['quantity'] = $items[(int)$line['product_id']];
+        $existing[(int)$line['product_id']] = $line['quantity'];
+    }
+    unset($line);
+    $_SESSION['guest_cart'] = $existing;
+    return $lines;
+}
+
+function current_cart_lines(): array {
+    $user = current_user();
+    return $user ? cart_lines((int)$user['id']) : guest_cart_lines();
+}
+
+function current_cart_count(): int {
+    $user = current_user();
+    if ($user) return cart_count((int)$user['id']);
+    return array_sum(array_column(guest_cart_lines(), 'quantity'));
+}
+
+function merge_guest_cart(PDO $pdo, int $userId): void {
+    $items = guest_cart_items();
+    if (!$items) return;
+    ksort($items, SORT_NUMERIC);
+    $adjusted = false;
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare('INSERT INTO cart (user_id) VALUES (?) ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)')->execute([$userId]);
+        $cartSt = $pdo->prepare('SELECT id FROM cart WHERE user_id = ? FOR UPDATE');
+        $cartSt->execute([$userId]);
+        $cartId = (int)$cartSt->fetchColumn();
+        $productSt = $pdo->prepare("SELECT p.stock FROM products p JOIN categories c ON c.id = p.category_id
+            WHERE p.id = ? AND p.status = 'active' AND c.status = 'active' FOR UPDATE");
+        $itemSt = $pdo->prepare('SELECT quantity FROM cart_items WHERE cart_id = ? AND product_id = ? FOR UPDATE');
+        $saveSt = $pdo->prepare('INSERT INTO cart_items (cart_id, product_id, quantity) VALUES (?,?,?) ON DUPLICATE KEY UPDATE quantity = VALUES(quantity)');
+        foreach ($items as $productId => $quantity) {
+            $productSt->execute([$productId]);
+            $stock = $productSt->fetchColumn();
+            if ($stock === false || (int)$stock < 1) { $adjusted = true; continue; }
+            $itemSt->execute([$cartId, $productId]);
+            $oldQuantity = (int)($itemSt->fetchColumn() ?: 0);
+            $newQuantity = min(999, (int)$stock, $oldQuantity + $quantity);
+            if ($newQuantity !== $oldQuantity + $quantity) $adjusted = true;
+            $saveSt->execute([$cartId, $productId, $newQuantity]);
+        }
+        $pdo->prepare('UPDATE cart SET updated_at = NOW() WHERE id = ?')->execute([$cartId]);
+        $pdo->commit();
+        unset($_SESSION['guest_cart']);
+    } catch (Throwable $ex) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $ex;
+    }
+    if ($adjusted) flash('info', 'Giỏ hàng đã được cập nhật theo tồn kho hiện tại. Vui lòng kiểm tra lại trước khi đặt.');
+}
+
+// Chỉ quay lại trang GET của khách hàng, không chấp nhận URL ngoài hoặc action POST.
+function safe_customer_return(mixed $target): ?string {
+    if (!is_string($target)) return null;
+    if (in_array($target, ['index.php', 'cart.php', 'checkout.php', 'profile.php', 'purchase_history.php'], true)) return $target;
+    if (preg_match('/^(product_detail|purchase_history|payment)\.php\?id=([1-9][0-9]{0,9})$/D', $target)) return $target;
+    return null;
+}
+
+function customer_login_destination(): string {
+    $target = safe_customer_return($_SESSION['login_return_to'] ?? null) ?? 'index.php';
+    unset($_SESSION['login_return_to']);
+    return $target;
 }
 
 // Chỉ cho phép quay lại các trang nội bộ hợp lệ (chống chuyển hướng ra ngoài).

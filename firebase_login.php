@@ -9,7 +9,7 @@ function firebase_reply(int $status, array $data): void {
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') firebase_reply(405, ['ok' => false, 'message' => 'Yêu cầu không hợp lệ.']);
 if (!csrf_ok()) firebase_reply(403, ['ok' => false, 'message' => 'Phiên làm việc hết hạn. Vui lòng tải lại trang.']);
-if (isLoggedIn()) firebase_reply(200, ['ok' => true, 'redirect' => isAdmin() ? '/Quantri/index.php' : url('index.php')]);
+if (isLoggedIn()) firebase_reply(200, ['ok' => true, 'redirect' => isAdmin() ? '/Quantri/index.php' : url(customer_login_destination())]);
 if (time() - (int)($_SESSION['firebase_last_attempt'] ?? 0) < 2) firebase_reply(429, ['ok' => false, 'message' => 'Vui lòng chờ vài giây rồi thử lại.']);
 $_SESSION['firebase_last_attempt'] = time();
 try {
@@ -28,10 +28,10 @@ try {
         start_admin_session($id);
         firebase_reply(200, ['ok' => true, 'redirect' => '/Quantri/index.php']);
     }
-    session_regenerate_id(true);
     unset($_SESSION['csrf'], $_SESSION['password_recovery'], $_SESSION['google_login']);
-    $_SESSION['user_id'] = $id;
-    firebase_reply(200, ['ok' => true, 'redirect' => url('index.php')]);
+    $stage = 'guest_cart_merge';
+    $destination = finish_customer_login($id);
+    firebase_reply(200, ['ok' => true, 'redirect' => url($destination)]);
 } catch (DomainException $e) {
     firebase_reply(401, ['ok' => false, 'message' => $e->getMessage()]);
 } catch (Throwable $e) {

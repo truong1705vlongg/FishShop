@@ -25,9 +25,11 @@ include __DIR__ . '/includes/header.php';
     <h2 style="font-size:18px;margin-bottom:14px">Thông tin đơn hàng</h2>
     <div class="sum"><span>Mã đơn hàng</span><span style="color:var(--ink)">#<?= (int)$o['id'] ?></span></div>
     <div class="sum"><span>Trạng thái đơn</span><span class="tag <?= e($o['status']) ?>"><?= e(ORDER_STATUS[$o['status']]) ?></span></div>
-    <div class="sum"><span>Thanh toán</span><span class="tag <?= e($o['payment_status']) ?>"><?= e(PAYMENT_STATUS[$o['payment_status']]) ?></span></div>
+    <div class="sum"><span>Thanh toán</span><span id="payment-status-badge" class="tag <?= e($o['payment_status']) ?>"><?= e(PAYMENT_STATUS[$o['payment_status']]) ?></span></div>
     <div class="sum"><span>Phương thức</span><span><?= e(['cash' => 'Tiền mặt khi nhận', 'bank_transfer' => 'Chuyển khoản ngân hàng', 'payos' => 'Chuyển khoản ngân hàng'][($o['payment_method'] ?? 'bank_transfer')] ?? 'Chuyển khoản ngân hàng') ?></span></div>
+    <?php $totalsOrder = $o; include __DIR__ . '/includes/order_totals.php'; ?>
     <div class="sum t"><span><?= ($o['payment_method'] ?? '') === 'cash' ? 'Tổng tiền đơn hàng' : 'Số tiền cần thanh toán' ?></span><span><?= money($o['total']) ?></span></div>
+    <div id="payment-state-message">
     <?php if ($o['status'] === 'cancelled'): ?>
       <div class="alert err">Đơn hàng đã bị hủy, không cần thanh toán.</div>
     <?php elseif ($o['payment_status'] === 'paid'): ?>
@@ -41,6 +43,7 @@ include __DIR__ . '/includes/header.php';
     <?php else: ?>
       <div class="alert warn"><?= ($o['payment_method'] ?? '') === 'payos' ? 'Đơn hàng đang chờ bạn chuyển khoản.' : 'Đơn hàng chờ chuyển khoản. Quản trị viên sẽ xác nhận sau khi kiểm tra giao dịch.' ?></div>
     <?php endif; ?>
+    </div>
     <div class="acts-row" style="margin-top:8px">
       <?php if ($o['status'] !== 'cancelled' && ($o['payment_method'] ?? 'bank_transfer') === 'bank_transfer' && in_array($o['payment_status'], ['unpaid', 'rejected'], true)): ?>
         <form action="<?= url('actions/confirm_transfer.php') ?>" method="post" data-confirm="Bạn đã chuyển khoản đúng số tiền cho đơn này?">
@@ -66,7 +69,7 @@ include __DIR__ . '/includes/header.php';
       <div id="payment-success" class="payment-success hidden" role="status" aria-live="polite">
         <div class="payment-success-mark" aria-hidden="true">✓</div>
         <h3>Thanh toán thành công</h3>
-        <p>Fish Shop đã nhận được thông báo thanh toán của bạn.</p>
+        <p>Fish Shop đã xác nhận khoản thanh toán cho đơn hàng của bạn.</p>
         <p class="payment-countdown">Đang chuyển đến chi tiết đơn sau <strong id="payment-countdown">3</strong> giây</p>
         <a class="btn" href="<?= url('purchase_history.php?id=' . (int)$o['id']) ?>">Xem chi tiết đơn ngay</a>
       </div>
@@ -80,35 +83,89 @@ include __DIR__ . '/includes/header.php';
         (() => {
           const note = document.getElementById('payos-embed-note');
           const regenerate = document.getElementById('payos-regenerate-form');
+          const statusUrl = <?= json_encode(url('actions/payment_status.php?id=' . (int)$o['id']), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+          const orderUrl = <?= json_encode(url('purchase_history.php?id=' . (int)$o['id']), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
           let redirecting = false;
-          if (!window.PayOSCheckout) { note.textContent = 'Không tải được khung QR. Dùng liên kết mở trang thanh toán riêng bên dưới.'; return; }
-          try {
+          let checking = false;
+          let attempts = 0;
+          let stopped = false;
+          let pollTimer = null;
+          const maxAttempts = 36;
+
+          function showConfirmedSuccess() {
+            if (redirecting) return;
+            redirecting = true;
+            window.clearTimeout(pollTimer);
+            document.getElementById('payos-checkout-embed').classList.add('hidden');
+            note.classList.add('hidden');
+            regenerate.classList.add('hidden');
+            document.getElementById('payos-external-link').classList.add('hidden');
+            document.getElementById('payment-success').classList.remove('hidden');
+            const badge = document.getElementById('payment-status-badge');
+            badge.className = 'tag paid';
+            badge.textContent = 'Đã thanh toán';
+            const message = document.getElementById('payment-state-message');
+            message.className = 'alert ok';
+            message.textContent = 'Đơn hàng đã được xác nhận thanh toán.';
+            const counter = document.getElementById('payment-countdown');
+            let seconds = 3;
+            counter.textContent = String(seconds);
+            const countdown = window.setInterval(() => {
+              seconds -= 1;
+              counter.textContent = String(seconds);
+              if (seconds <= 0) {
+                window.clearInterval(countdown);
+                window.location.replace(orderUrl);
+              }
+            }, 1000);
+          }
+
+          async function checkPaymentStatus() {
+            if (redirecting || checking || stopped) return;
+            window.clearTimeout(pollTimer);
+            checking = true;
+            attempts += 1;
+            const controller = new AbortController();
+            const timeout = window.setTimeout(() => controller.abort(), 30000);
+            try {
+              const response = await fetch(statusUrl, {headers: {'Accept': 'application/json'}, credentials: 'same-origin', cache: 'no-store', signal: controller.signal});
+              if (response.status === 401) {
+                stopped = true;
+                note.textContent = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để xem trạng thái đơn hàng.';
+                return;
+              }
+              const result = await response.json();
+              if (response.ok && result.ok === true && result.payment_status === 'paid') showConfirmedSuccess();
+            } catch (error) {
+              // A browser callback or temporary network failure never confirms payment.
+            } finally {
+              window.clearTimeout(timeout);
+              checking = false;
+              if (!redirecting && !stopped) {
+                if (attempts < maxAttempts) pollTimer = window.setTimeout(checkPaymentStatus, 5000);
+                else {
+                  stopped = true;
+                  note.textContent = 'Chưa nhận được xác nhận thanh toán. Bạn có thể mở chi tiết đơn hoặc tải lại trang để kiểm tra tiếp.';
+                }
+              }
+            }
+          }
+
+          if (!window.PayOSCheckout) {
+            note.textContent = 'Không tải được khung QR. Dùng liên kết mở trang thanh toán riêng bên dưới.';
+          } else try {
             const checkout = window.PayOSCheckout.usePayOS({
               RETURN_URL: <?= json_encode($payosReturnUrl, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
               ELEMENT_ID: 'payos-checkout-embed',
               CHECKOUT_URL: <?= json_encode($o['payos_checkout_url'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
               embedded: true,
               onSuccess: () => {
-                if (redirecting) return;
-                redirecting = true;
-                document.getElementById('payos-checkout-embed').classList.add('hidden');
-                note.classList.add('hidden');
-                document.getElementById('payos-external-link').classList.add('hidden');
-                document.getElementById('payment-success').classList.remove('hidden');
-                const counter = document.getElementById('payment-countdown');
-                let seconds = 3;
-                const orderDetailsUrl = <?= json_encode(url('purchase_history.php?id=' . (int)$o['id']), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-                const countdown = window.setInterval(() => {
-                  seconds -= 1;
-                  counter.textContent = String(seconds);
-                  if (seconds <= 0) {
-                    window.clearInterval(countdown);
-                    window.location.replace(orderDetailsUrl);
-                  }
-                }, 1000);
+                if (redirecting || stopped) return;
+                note.textContent = 'Đã nhận tín hiệu từ ngân hàng. Đang xác minh thanh toán…';
+                checkPaymentStatus();
               },
-              onCancel: () => { note.textContent = 'Đã hủy bước thanh toán. Bạn có thể tạo mã QR mới bên dưới.'; regenerate.classList.remove('hidden'); },
-              onExit: () => { note.textContent = 'Bạn đã đóng khung thanh toán. Có thể tạo mã QR mới nếu muốn.'; regenerate.classList.remove('hidden'); }
+              onCancel: () => { if (!redirecting) { note.textContent = 'Đã hủy bước thanh toán. Bạn có thể tạo mã QR mới bên dưới.'; regenerate.classList.remove('hidden'); } },
+              onExit: () => { if (!redirecting) { note.textContent = 'Bạn đã đóng khung thanh toán. Có thể tạo mã QR mới nếu muốn.'; regenerate.classList.remove('hidden'); } }
             });
             checkout.open();
             const fitFrame = () => document.querySelectorAll('#payos-checkout-embed iframe').forEach(frame => {
@@ -120,26 +177,7 @@ include __DIR__ . '/includes/header.php';
             window.setTimeout(fitFrame, 100);
             window.setTimeout(fitFrame, 500);
           } catch (error) { note.textContent = 'Không tải được khung QR. Dùng liên kết mở trang thanh toán riêng bên dưới.'; }
-        })();
-      </script>
-      <script>
-        (() => {
-          const statusUrl = <?= json_encode(url('actions/payment_status.php?id=' . (int)$o['id']), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-          const orderUrl = <?= json_encode(url('purchase_history.php?id=' . (int)$o['id']), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-          let attempts = 0;
-          const timer = window.setInterval(async () => {
-            attempts += 1;
-            try {
-              const response = await fetch(statusUrl, {headers: {'Accept': 'application/json'}, cache: 'no-store'});
-              const result = await response.json();
-              if (response.ok && result.payment_status === 'paid') {
-                window.clearInterval(timer);
-                window.location.replace(orderUrl);
-                return;
-              }
-            } catch (error) {}
-            if (attempts >= 36) window.clearInterval(timer);
-          }, 5000);
+          checkPaymentStatus();
         })();
       </script>
     <?php elseif ($payosWasCancelled): ?>

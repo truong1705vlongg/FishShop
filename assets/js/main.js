@@ -39,7 +39,6 @@
         credentials: 'same-origin'
       })
         .then(function (r) {
-          if (r.status === 401) { window.location.href = base + 'login.php'; throw new Error('login'); }
           return r.json();
         })
         .then(function (d) {

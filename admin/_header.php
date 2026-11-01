@@ -9,6 +9,7 @@ $pageTitle = $pageTitle ?? 'Quản trị';
 <title><?= e($pageTitle) ?> | Fish Shop · Quản trị</title>
 <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/style.css') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/reference-theme.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/reference-theme.css') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/vouchers.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/vouchers.css') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/slideshow.css') ?>">
 </head>
 <body class="admin-area" data-base="<?= e(BASE_URL) ?>" data-csrf="<?= e(csrf_token()) ?>">
@@ -26,6 +27,7 @@ $pageTitle = $pageTitle ?? 'Quản trị';
       <a href="<?= url('admin/categories.php') ?>" class="<?= basename($_SERVER['SCRIPT_NAME']) === 'categories.php' ? 'active' : '' ?>">Danh mục</a>
       <a href="<?= url('admin/customers.php') ?>" class="<?= in_array(basename($_SERVER['SCRIPT_NAME']), ['customers.php', 'customer_detail.php'], true) ? 'active' : '' ?>">Khách hàng</a>
       <a href="<?= url('admin/orders.php') ?>" class="<?= basename($_SERVER['SCRIPT_NAME']) === 'orders.php' ? 'active' : '' ?>">Đơn hàng</a>
+      <a href="<?= BASE_URL ?>admin/vouchers.php" class="<?= basename($_SERVER['SCRIPT_NAME']) === 'vouchers.php' ? 'active' : '' ?>">Mã giảm giá</a>
     </nav>
     <div class="admin-side-bottom">
       <form action="<?= url('admin/logout.php') ?>" method="post"><?= csrf_field() ?><button type="submit">Đăng xuất</button></form>

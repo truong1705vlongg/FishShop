@@ -32,6 +32,7 @@ if (($payload['success'] ?? false) === true && ($payload['code'] ?? '') === '00'
             $pdo->prepare("UPDATE orders SET payment_status = 'paid', payos_paid_at = UTC_TIMESTAMP() WHERE id = ? AND payment_status <> 'paid'")
                 ->execute([(int)$order['id']]);
         }
+        sync_order_rank($pdo, (int)$order['id']);
         $pdo->commit();
         payos_webhook_reply(200, ['ok' => true]);
     } catch (Throwable $e) {

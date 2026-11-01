@@ -12,7 +12,7 @@ $currentPage = basename($_SERVER['SCRIPT_NAME']);
     </form>
     <a class="header-support" href="#ho-tro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h4l2 5-3 2c2 3 3 4 6 6l2-3 5 2v4c0 2-2 2-3 2C10 20 4 14 3 6c0-1 0-3 2-3Z"/></svg><span>Hỗ trợ khách hàng<strong>Thông tin cửa hàng</strong></span></a>
     <div class="header-actions">
-      <a class="header-action" data-nav="cart" href="<?= url('cart.php') ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h2l3 12h11l2-8H6"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>Giỏ hàng</span><b id="cart-badge" class="badge-n"><?= $u ? cart_count((int)$u['id']) : 0 ?></b></a>
+      <a class="header-action" data-nav="cart" href="<?= url('cart.php') ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h2l3 12h11l2-8H6"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span>Giỏ hàng</span><b id="cart-badge" class="badge-n"><?= current_cart_count() ?></b></a>
       <?php if ($u): ?>
         <a class="account-avatar" href="<?= url('profile.php') ?>" aria-label="Thông tin tài khoản">
           <img src="<?= e(file_url($u['avatar'] ?? null, 'assets/images/avatar-default.svg')) ?>" alt="Ảnh đại diện của <?= e($u['fullname']) ?>" width="40" height="40">

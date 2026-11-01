@@ -4,7 +4,7 @@ header('Cache-Control: no-store, private');
 header('Referrer-Policy: no-referrer');
 if (isLoggedIn()) {
     if (isAdmin()) { header('Location: /Quantri/index.php'); exit; }
-    redirect('index.php');
+    redirect(customer_login_destination());
 }
 $pending = $_SESSION['google_login'] ?? null;
 unset($_SESSION['google_login']);
@@ -30,10 +30,8 @@ try {
         header('Location: /Quantri/index.php');
         exit;
     }
-    session_regenerate_id(true);
     unset($_SESSION['csrf'], $_SESSION['password_recovery']);
-    $_SESSION['user_id'] = $id;
-    redirect('index.php');
+    redirect(finish_customer_login($id));
 } catch (DomainException $e) {
     flash('error', $e->getMessage());
 } catch (Throwable $e) {
