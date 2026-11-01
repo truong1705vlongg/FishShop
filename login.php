@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
-if (isLoggedIn()) redirect('index.php');   // đã đăng nhập thì không ở lại trang này (tránh vòng lặp)
+if (isLoggedIn()) redirect(isAdmin() ? 'admin/index.php' : 'index.php');
 
 $error = '';
 $username = '';
@@ -12,10 +12,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($username === '' || $password === '') {
         $error = 'Vui lòng nhập tên đăng nhập và mật khẩu.';
     } else {
-        $st = db()->prepare('SELECT id, password, account_status FROM users WHERE username = ?');
+        $st = db()->prepare('SELECT id, password, account_status, role FROM users WHERE username = ?');
         $st->execute([$username]);
         $row = $st->fetch();
-        if ($row && password_verify($password, $row['password'])) {
+        if ($row && password_verify($password, $row['password']) && $row['role'] === 'admin') {
+            $error = 'Tên đăng nhập hoặc mật khẩu không đúng.';
+        } elseif ($row && password_verify($password, $row['password'])) {
             if (($row['account_status'] ?? 'active') === 'locked') {
                 $error = 'Tài khoản này đang bị khóa. Vui lòng liên hệ Quản trị viên để được hỗ trợ.';
             } else {

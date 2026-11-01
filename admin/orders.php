@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/bootstrap.php';
 requireAdmin();
 $detailId = (int)($_GET['id'] ?? 0);
 
@@ -60,10 +60,9 @@ if ($detailId > 0) {
 }
 
 $pageTitle = $order ? 'Đơn #' . $order['id'] : 'Quản lý đơn hàng';
-include __DIR__ . '/../includes/header.php';
+include __DIR__ . '/_header.php';
 ?>
 <section class="page-intro"><h1><?= $order ? 'Đơn hàng #' . (int)$order['id'] : 'Đơn hàng' ?></h1><p>Xác nhận thanh toán thủ công sau khi đã kiểm tra giao dịch thực tế trong tài khoản ngân hàng.</p></section>
-<?php include __DIR__ . '/../includes/admin_nav.php'; ?>
 
 <?php if ($order): ?>
 <div class="cart">
@@ -94,6 +93,7 @@ include __DIR__ . '/../includes/header.php';
         <small>Chỉ chọn “Đã thanh toán” khi tiền đã về tài khoản.</small></div>
       <button class="btn block" type="submit">Lưu thay đổi</button>
     </form>
+    <a class="btn ghost block" style="margin-top:10px" href="<?= BASE_URL ?>admin/export_order_word.php?id=<?= (int)$order['id'] ?>">Xuất đơn hàng sang Word</a>
     <a class="btn ghost block" style="margin-top:10px" href="<?= url('admin/orders.php') ?>">Quay lại danh sách</a>
   </aside>
 </div>
@@ -112,7 +112,7 @@ include __DIR__ . '/../includes/header.php';
   <div class="empty"><h2>Không có đơn hàng</h2><p>Chưa có đơn nào khớp bộ lọc.</p></div>
 <?php else: ?>
 <div class="table-wrap"><table>
-  <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Ngày đặt</th><th class="num">Tổng tiền</th><th>Đơn</th><th>Thanh toán</th><th></th></tr></thead>
+  <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Ngày đặt</th><th class="num">Tổng tiền</th><th>Đơn</th><th>Thanh toán</th><th>Thao tác</th></tr></thead>
   <tbody>
   <?php foreach ($orders as $o): ?>
     <tr>
@@ -121,10 +121,10 @@ include __DIR__ . '/../includes/header.php';
       <td class="num"><?= money($o['total']) ?></td>
       <td><span class="tag <?= e($o['status']) ?>"><?= e(ORDER_STATUS[$o['status']]) ?></span></td>
       <td><span class="tag <?= e($o['payment_status']) ?>"><?= e(PAYMENT_STATUS[$o['payment_status']]) ?></span></td>
-      <td><a class="btn ghost sm" href="<?= url('admin/orders.php?id=' . (int)$o['id']) ?>">Chi tiết</a></td>
+      <td style="white-space:nowrap"><a class="btn ghost sm" href="<?= url('admin/orders.php?id=' . (int)$o['id']) ?>">Chi tiết</a> <a class="btn ghost sm" href="<?= BASE_URL ?>admin/export_order_word.php?id=<?= (int)$o['id'] ?>">Word</a></td>
     </tr>
   <?php endforeach; ?>
   </tbody>
 </table></div>
 <?php endif; endif; ?>
-<?php include __DIR__ . '/../includes/footer.php'; ?>
+<?php include __DIR__ . '/_footer.php'; ?>

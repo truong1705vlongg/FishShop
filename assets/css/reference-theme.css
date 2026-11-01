@@ -516,6 +516,30 @@ input::placeholder, textarea::placeholder { color:var(--mute); }
 /* Shop logo and signed-in account avatar. */
 .logo .brand-avatar { width:44px; height:44px; flex-shrink:0; object-fit:cover; border-radius:50%; border:1px solid var(--line); }
 .header-actions { flex-wrap:nowrap; }
+.admin-area { background:var(--bg); }
+.admin-shell { display:grid; grid-template-columns:250px minmax(0,1fr); min-height:100vh; }
+.admin-sidebar { position:sticky; top:0; display:flex; flex-direction:column; height:100vh; padding:22px 14px; background:#0e1928; border-right:1px solid var(--line); }
+.admin-brand { display:flex; align-items:center; gap:12px; min-height:64px; padding:0 10px 20px; border-bottom:1px solid var(--line); color:var(--ink); font-weight:800; letter-spacing:.5px; }
+.admin-brand-mark { display:grid; place-items:center; width:40px; height:40px; flex:none; border-radius:50%; background:var(--teal); color:#092c28; font-size:20px; }
+.admin-brand small { display:block; margin-top:2px; color:var(--mute); font-size:10px; letter-spacing:1px; }
+.admin-side-nav { display:grid; gap:6px; margin-top:20px; }
+.admin-side-nav a, .admin-side-bottom > a, .admin-side-bottom button { display:flex; align-items:center; min-height:44px; padding:9px 12px; border:0; border-radius:8px; background:transparent; color:#c2cfdb; font:inherit; font-size:14px; text-align:left; text-decoration:none; cursor:pointer; }
+.admin-side-nav a:hover, .admin-side-bottom > a:hover, .admin-side-bottom button:hover { background:#17283a; color:var(--ink); }
+.admin-side-nav a.active { background:#1a2b3d; color:var(--teal); box-shadow:inset 3px 0 var(--teal); }
+.admin-side-bottom { display:grid; gap:4px; margin-top:auto; padding-top:14px; border-top:1px solid var(--line); }
+.admin-side-bottom form { margin:0; }
+.admin-main { width:100%; max-width:none; padding:30px clamp(20px,3vw,48px) 48px; }
+.admin-main > .page-intro { margin-bottom:22px; }
+@media (max-width:760px) {
+  .admin-shell { grid-template-columns:1fr; }
+  .admin-sidebar { position:static; width:100%; height:auto; padding:12px 14px; }
+  .admin-brand { min-height:50px; padding:0 8px 12px; }
+  .admin-side-nav { display:flex; overflow-x:auto; gap:6px; margin-top:10px; padding-bottom:2px; }
+  .admin-side-nav a { flex:none; min-height:38px; white-space:nowrap; }
+  .admin-side-bottom { display:flex; gap:6px; margin-top:8px; padding-top:8px; }
+  .admin-side-bottom > a, .admin-side-bottom button { min-height:38px; white-space:nowrap; }
+  .admin-main { padding:22px 16px 36px; }
+}
 .account-avatar { display:block; flex-shrink:0; border-radius:50%; }
 .account-avatar img { width:40px; height:40px; object-fit:cover; border-radius:50%; border:1px solid var(--teal); background:var(--card); }
 @media (max-width:700px) { .account-avatar img { width:34px; height:34px; } .account-links { max-width:125px; } }

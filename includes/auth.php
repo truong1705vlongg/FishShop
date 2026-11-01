@@ -4,6 +4,9 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/functions.php';
 
 if (session_status() === PHP_SESSION_NONE) {
+    if (defined('FISHSHOP_ADMIN_PORTAL')) {
+        session_name('FISHSHOP_ADMIN_SESSION');
+    }
     ini_set('session.use_strict_mode', '1');
     ini_set('session.use_only_cookies', '1');
     session_set_cookie_params([
@@ -12,6 +15,19 @@ if (session_status() === PHP_SESSION_NONE) {
         'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'path' => '/',
     ]);
+    session_start();
+}
+
+// Create an admin login in its own cookie/session without replacing the customer session.
+function start_admin_session(int $userId): void {
+    $restoreName = session_name();
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+    session_name('FISHSHOP_ADMIN_SESSION');
+    session_start();
+    session_regenerate_id(true);
+    $_SESSION = ['user_id' => $userId];
+    session_write_close();
+    session_name($restoreName);
     session_start();
 }
 
@@ -47,7 +63,7 @@ function requireLogin(): array {
     if ($u === null) {
         flash('error', 'Tài khoản của bạn đang bị khóa hoặc bạn chưa đăng nhập.');
         if (wants_json()) { http_response_code(401); header('Content-Type: application/json'); echo json_encode(['ok' => false, 'message' => 'Tài khoản của bạn đang bị khóa hoặc bạn chưa đăng nhập.']); exit; }
-        redirect('login.php');
+        redirect(defined('FISHSHOP_ADMIN_PORTAL') ? 'admin/login.php' : 'login.php');
     }
     return $u;
 }
@@ -57,7 +73,7 @@ function requireAdmin(): array {
     if (($u['account_status'] ?? 'active') !== 'active') {
         flash('error', 'Tài khoản quản trị của bạn đang bị khóa.');
         unset($_SESSION['user_id']);
-        redirect('login.php');
+        redirect(defined('FISHSHOP_ADMIN_PORTAL') ? 'admin/login.php' : 'login.php');
     }
     return $u;
 }

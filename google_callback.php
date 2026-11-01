@@ -2,7 +2,10 @@
 require_once __DIR__ . '/includes/google_auth.php';
 header('Cache-Control: no-store, private');
 header('Referrer-Policy: no-referrer');
-if (isLoggedIn()) redirect('index.php');
+if (isLoggedIn()) {
+    if (isAdmin()) { header('Location: /Quantri/index.php'); exit; }
+    redirect('index.php');
+}
 $pending = $_SESSION['google_login'] ?? null;
 unset($_SESSION['google_login']);
 try {
@@ -18,9 +21,15 @@ try {
     if (!is_string($tokens['access_token'] ?? null)) throw new RuntimeException('Missing access token');
     $info = google_request('https://openidconnect.googleapis.com/v1/userinfo', null, $tokens['access_token']);
     $id = google_account_id(db(), $info);
-    $st = db()->prepare("SELECT id FROM users WHERE id = ? AND account_status = 'active'");
+    $st = db()->prepare("SELECT id, role FROM users WHERE id = ? AND account_status = 'active'");
     $st->execute([$id]);
-    if (!$st->fetchColumn()) throw new RuntimeException('Inactive account');
+    $account = $st->fetch();
+    if (!$account) throw new RuntimeException('Inactive account');
+    if ($account['role'] === 'admin') {
+        start_admin_session($id);
+        header('Location: /Quantri/index.php');
+        exit;
+    }
     session_regenerate_id(true);
     unset($_SESSION['csrf'], $_SESSION['password_recovery']);
     $_SESSION['user_id'] = $id;

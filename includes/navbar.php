@@ -35,7 +35,6 @@ $currentPage = basename($_SERVER['SCRIPT_NAME']);
       <a href="<?= url('index.php#san-pham') ?>">Danh sách sản phẩm</a>
       <a class="<?= $currentPage === 'purchase_history.php' ? 'on' : '' ?>" href="<?= url('purchase_history.php') ?>">Đơn của tôi</a>
       <a class="<?= $currentPage === 'profile.php' ? 'on' : '' ?>" href="<?= url('profile.php') ?>">Tài khoản</a>
-      <?php if ($u && $u['role'] === 'admin'): ?><a href="<?= url('admin/index.php') ?>">Quản trị</a><?php endif; ?>
       <a href="#ho-tro">Hỗ trợ</a>
     </nav>
   </div></div>

@@ -1,11 +1,13 @@
 <?php
-// Public Firebase Web configuration. Never put service-account private keys here.
+require_once __DIR__ . '/env.php';
+
+// Public Firebase Web config is read from .env. Never expose service-account keys here.
 return [
-    'apiKey' => 'AIzaSyDWNG7K9BSo_2p9_-iH55cvmZl_2iWtY5s',
-    'authDomain' => 'fishshop-de2f9.firebaseapp.com',
-    'projectId' => 'fishshop-de2f9',
-    'storageBucket' => 'fishshop-de2f9.firebasestorage.app',
-    'messagingSenderId' => '708920126149',
-    'appId' => '1:708920126149:web:4601f893b16a614181deac',
-    'measurementId' => 'G-5K54VHE8ZF',
+    'apiKey' => fishshop_env('FISHSHOP_FIREBASE_API_KEY'),
+    'authDomain' => fishshop_env('FISHSHOP_FIREBASE_AUTH_DOMAIN'),
+    'projectId' => fishshop_env('FISHSHOP_FIREBASE_PROJECT_ID'),
+    'storageBucket' => fishshop_env('FISHSHOP_FIREBASE_STORAGE_BUCKET'),
+    'messagingSenderId' => fishshop_env('FISHSHOP_FIREBASE_MESSAGING_SENDER_ID'),
+    'appId' => fishshop_env('FISHSHOP_FIREBASE_APP_ID'),
+    'measurementId' => fishshop_env('FISHSHOP_FIREBASE_MEASUREMENT_ID'),
 ];

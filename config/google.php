@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/env.php';
 
-// Điền thông tin OAuth Web application tại đây hoặc dùng biến môi trường.
+// Optional direct OAuth flow. Current Google buttons use Firebase instead.
 return [
     'client_id' => fishshop_env('FISHSHOP_GOOGLE_CLIENT_ID'),
     'client_secret' => fishshop_env('FISHSHOP_GOOGLE_CLIENT_SECRET'),

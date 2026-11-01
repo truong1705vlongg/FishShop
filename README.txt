@@ -19,7 +19,7 @@ WEBBANCA - HƯỚNG DẪN CÀI ĐẶT VÀ CHẠY
 1) Vào http://localhost/FishShop/register.php và đăng ký một tài khoản bình thường.
 2) Mở phpMyAdmin > database WebBanCa > bảng users > chọn "Sửa" ở dòng tài khoản đó.
 3) Đổi cột role từ customer thành admin > Thực hiện.
-4) Đăng xuất rồi đăng nhập lại: trên thanh điều hướng sẽ có mục "Quản trị".
+4) Đặt thư mục quản trị riêng tại C:\xampp\htdocs\Quantri\ và mở http://localhost/Quantri/login.php để đăng nhập.
 (Không có trang nào cho phép tự nâng quyền; role chỉ đổi được trong database.)
 
 3. ẢNH QR THANH TOÁN
@@ -27,7 +27,7 @@ WEBBANCA - HƯỚNG DẪN CÀI ĐẶT VÀ CHẠY
 Đặt ảnh QR thật của bạn tại:  C:\xampp\htdocs\FishShop\payment\NapTienDi.jpg
 (đúng tên, đúng chữ hoa/thường). Chưa có file thì trang thanh toán hiện thông báo:
 "Chưa có ảnh QR thanh toán. Vui lòng bổ sung file payment/NapTienDi.jpg."
-Thư mục uploads\products và uploads\avatars đã có sẵn; PHP tự lưu ảnh vào đó.
+Ảnh tải mới được lưu bằng Cloudinary; cấu hình theo CLOUDINARY_SETUP.md. Ảnh cũ trong uploads\products và uploads\avatars vẫn hiển thị.
 
 4. SƠ ĐỒ QUAN HỆ CSDL
 ---------------------
@@ -64,7 +64,7 @@ users 1 --- 1 customer_ranks; users 1 --- n rank_order_earnings n --- 1 orders
 [ ] Đăng nhập sai: báo lỗi; đúng: vào trang chủ, thấy tên + nút Đăng xuất.
 [ ] Đăng xuất rồi bấm nút Back của trình duyệt, tải lại: vẫn bị chuyển về đăng nhập.
 [ ] Admin: Danh mục > thêm 1 danh mục; Sản phẩm > Thêm sản phẩm kèm ảnh; kiểm tra file xuất hiện
-    trong uploads\products và cột image trong database là uploads/products/xxxx.jpg.
+    trên Cloudinary và cột image trong database lưu URL HTTPS. Xem CLOUDINARY_SETUP.md để cấu hình.
 [ ] Trang chủ: sản phẩm hiện đúng; thử tìm kiếm, lọc danh mục, sắp xếp.
 [ ] Thêm vào giỏ (từ trang chủ và trang chi tiết); số lượng vượt tồn kho bị từ chối.
 [ ] Đăng xuất, đăng nhập lại: giỏ hàng vẫn còn.
@@ -85,9 +85,9 @@ users 1 --- 1 customer_ranks; users 1 --- n rank_order_earnings n --- 1 orders
 - "Không kết nối được MySQL": chưa Start MySQL, chưa nhập SQL, hoặc sai thông tin trong config\database.php.
 - Trang trắng / lỗi 404: sai vị trí thư mục (phải là htdocs\FishShop) hoặc sai BASE_URL.
 - CSS không áp dụng: BASE_URL sai so với tên thư mục thật.
-- Tải ảnh không được: ảnh > 2MB, không phải JPG/PNG/WEBP, hoặc thư mục uploads bị khóa ghi.
+- Tải ảnh không được: kiểm tra cấu hình trong CLOUDINARY_SETUP.md, PHP cURL và kết nối HTTPS. Ảnh phải là JPG/PNG/WEBP, tối đa 2MB.
   Nếu ảnh quá lớn so với giới hạn của PHP, tăng upload_max_filesize và post_max_size trong php.ini rồi restart Apache.
-- Không thấy mục Quản trị: tài khoản chưa đổi role thành admin (xem mục 2) hoặc chưa đăng nhập lại.
+- Không đăng nhập được trang quản trị: kiểm tra role của tài khoản là admin và thư mục C:\xampp\htdocs\Quantri tồn tại.
 - Tên bảng/cột lỗi chữ hoa/thường: trên Windows không phân biệt, nhưng nên giữ đúng như file SQL.
 
 8. NÂNG CẤP EMAIL VÀ KHÔI PHỤC MẬT KHẨU

@@ -2,7 +2,13 @@
 // Hàm tiện ích dùng chung.
 function e($s): string { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 function money($v): string { return number_format((float)$v, 0, ',', '.') . ' ₫'; }
-function url(string $path = ''): string { return BASE_URL . ltrim($path, '/'); }
+function url(string $path = ''): string {
+    $path = ltrim($path, '/');
+    if (defined('FISHSHOP_ADMIN_PORTAL') && ($path === 'admin' || str_starts_with($path, 'admin/'))) {
+        return '/Quantri/' . ($path === 'admin' ? '' : substr($path, 6));
+    }
+    return BASE_URL . $path;
+}
 function redirect(string $path): void { header('Location: ' . url($path)); exit; }
 function post_string(string $key): string { return isset($_POST[$key]) && is_string($_POST[$key]) ? $_POST[$key] : ''; }
 
@@ -156,9 +162,11 @@ function csrf_ok(): bool {
 function flash(string $type, string $msg): void { $_SESSION['flash'][] = ['type' => $type, 'msg' => $msg]; }
 function take_flash(): array { $f = $_SESSION['flash'] ?? []; unset($_SESSION['flash']); return $f; }
 
-// ----- Ảnh: nếu không có file thật thì dùng ảnh thay thế -----
+// ----- Ảnh Cloudinary hoặc file cũ trong dự án -----
 function file_url(?string $rel, string $fallback = 'assets/images/no-image.svg'): string {
     $rel = (string)$rel;
+    if (preg_match('~^https://res\.cloudinary\.com/[a-zA-Z0-9_-]+/image/upload/[^\s?#<>]+$~D', $rel) === 1
+        && strpos($rel, '..') === false) return $rel;
     if ($rel !== '' && strpos($rel, '..') === false && is_file(__DIR__ . '/../' . $rel)) return url($rel);
     return url($fallback);
 }

@@ -1,6 +1,24 @@
 # Đăng nhập Google qua Firebase
 
-FishShop dùng Firebase Authentication của dự án `fishshop-de2f9`. Cấu hình Web nằm trong `config/firebase.php`. Không cần điền Google Client Secret trong `config/google.php` cho luồng Firebase này và không cần service-account private key.
+FishShop dùng Firebase Authentication của dự án `fishshop-de2f9`. Cấu hình Web được lưu trong `.env` và đọc qua `config/firebase.php`. Nút Google trên trang đăng nhập/đăng ký dùng nhóm `FISHSHOP_FIREBASE_*`.
+
+## Cấu hình trong .env
+
+Lấy Web config tại Firebase Console → Project settings → General → Your apps → ứng dụng Web. Điền các biến sau trong `.env` ở thư mục gốc FishShop (máy hiện tại đã được điền bằng cấu hình dự án đang dùng):
+
+```dotenv
+FISHSHOP_FIREBASE_API_KEY=
+FISHSHOP_FIREBASE_AUTH_DOMAIN=
+FISHSHOP_FIREBASE_PROJECT_ID=
+FISHSHOP_FIREBASE_STORAGE_BUCKET=
+FISHSHOP_FIREBASE_MESSAGING_SENDER_ID=
+FISHSHOP_FIREBASE_APP_ID=
+FISHSHOP_FIREBASE_MEASUREMENT_ID=
+```
+
+Chúng lần lượt tương ứng với `apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, `appId`, `measurementId` trong Firebase Web config. `measurementId` có thể để trống vì đăng nhập không bật Analytics. Các giá trị Web công khai vẫn được gửi tới Firebase SDK trên trình duyệt để đăng nhập hoạt động; service-account private key không được dùng ở đây.
+
+Nhóm `FISHSHOP_GOOGLE_CLIENT_ID`, `FISHSHOP_GOOGLE_CLIENT_SECRET`, `FISHSHOP_GOOGLE_REDIRECT_URI` dành cho luồng Google OAuth trực tiếp cũ (`google_login.php`/`google_callback.php`), có thể để trống hai giá trị Client ID/Secret khi dùng Firebase. Hai nhóm biến đều được liệt kê trong `.env.example` để phân biệt. `.env.example` là mẫu trống; `.env` chứa cấu hình thật và đã bị Git bỏ qua.
 
 ## Trạng thái tích hợp
 
