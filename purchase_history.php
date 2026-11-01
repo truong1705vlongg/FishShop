@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/payos.php';
+require_once __DIR__ . '/includes/location.php';
 $user = requireLogin();
 $uid = (int)$user['id'];
 $detailId = (int)($_GET['id'] ?? 0);
@@ -44,6 +45,9 @@ include __DIR__ . '/includes/header.php';
       <div class="sum"><span>Thanh toán</span><span id="order-payment-status" class="tag <?= e($order['payment_status']) ?>"><?= e(PAYMENT_STATUS[$order['payment_status']]) ?></span></div>
       <div class="sum"><span>Điện thoại</span><span><?= e($order['phone']) ?></span></div>
       <div class="sum"><span>Giao đến</span><span style="text-align:right;white-space:normal"><?= e($order['shipping_address']) ?></span></div>
+      <?php if ($deliveryUrl = shipping_location_url($order)): ?>
+      <p style="margin:10px 0"><a class="btn ghost sm" href="<?= e($deliveryUrl) ?>" target="_blank" rel="noopener noreferrer">Xem điểm giao hàng</a></p>
+      <?php endif; ?>
       <div class="sum t"><span>Tổng tiền</span><span><?= money($order['total']) ?></span></div>
       <?php if ($order['status'] !== 'cancelled' && $order['payment_status'] !== 'paid'): ?>
         <?php $orderPaymentMethod = $order['payment_method'] ?? 'bank_transfer'; ?>

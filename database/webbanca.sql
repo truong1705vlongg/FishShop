@@ -138,6 +138,8 @@ CREATE TABLE `orders` (
   `user_id` int(10) UNSIGNED NOT NULL,
   `total` decimal(14,0) NOT NULL,
   `shipping_address` varchar(255) NOT NULL,
+  `shipping_latitude` decimal(10,7) DEFAULT NULL,
+  `shipping_longitude` decimal(10,7) DEFAULT NULL,
   `phone` varchar(20) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `status` enum('pending','confirmed','shipping','completed','cancelled') NOT NULL DEFAULT 'pending',

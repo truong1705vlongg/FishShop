@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/../includes/location.php';
 requireAdmin();
 $detailId = (int)($_GET['id'] ?? 0);
 
@@ -82,6 +83,9 @@ include __DIR__ . '/_header.php';
     <div class="sum"><span>Họ tên</span><span><?= e($order['fullname']) ?></span></div>
     <div class="sum"><span>Điện thoại</span><span><?= e($order['phone']) ?></span></div>
     <div class="sum"><span>Giao đến</span><span style="text-align:right;white-space:normal"><?= e($order['shipping_address']) ?></span></div>
+    <?php if ($deliveryUrl = shipping_location_url($order)): ?>
+    <p style="margin:10px 0"><a class="btn ghost sm" href="<?= e($deliveryUrl) ?>" target="_blank" rel="noopener noreferrer">Xem điểm giao hàng</a></p>
+    <?php endif; ?>
     <div class="sum"><span>Ngày đặt</span><span><?= e(date('d/m/Y H:i', strtotime($order['created_at']))) ?></span></div>
     <div class="sum t"><span>Tổng tiền</span><span><?= money($order['total']) ?></span></div>
     <form method="post" data-confirm="Lưu thay đổi trạng thái đơn hàng?">

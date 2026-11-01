@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/payos.php';
+require_once __DIR__ . '/../includes/location.php';
 $user = requireLogin();
 requirePost('checkout.php');
 
@@ -10,9 +11,18 @@ $paymentMethod = post_string('payment_method');
 if (!in_array($paymentMethod, ['cash', 'bank_transfer', 'payos'], true)) respond(false, 'Vui lòng chọn phương thức thanh toán.', 'checkout.php');
 if (mb_strlen($address) < 5 || mb_strlen($address) > 255) respond(false, 'Vui lòng nhập địa chỉ giao hàng (5-255 ký tự).', 'checkout.php');
 if (!preg_match('/^[0-9]{9,11}$/', $phone)) respond(false, 'Số điện thoại gồm 9-11 chữ số.', 'checkout.php');
+try {
+    $shippingLocation = shipping_location_from_values($_POST['shipping_latitude'] ?? null, $_POST['shipping_longitude'] ?? null);
+} catch (DomainException $ex) {
+    respond(false, $ex->getMessage(), 'checkout.php');
+}
 
 $pdo = db();
 try {
+    $hasLocationColumns = shipping_location_schema_ready($pdo);
+    if ($shippingLocation !== null && !$hasLocationColumns) {
+        respond(false, 'Chưa lưu được điểm giao hàng lúc này. Vui lòng bỏ ghim và nhập đầy đủ địa chỉ để đặt hàng.', 'checkout.php');
+    }
     $pdo->beginTransaction();
 
     $cartId = get_cart_id((int)$user['id'], false);
@@ -42,8 +52,15 @@ try {
         $total += $q * (float)$p['price'];
     }
 
-    $pdo->prepare("INSERT INTO orders (user_id, total, shipping_address, phone, status, payment_status, payment_method) VALUES (?,?,?,?, 'pending', 'unpaid', ?)")
-        ->execute([(int)$user['id'], $total, $address, $phone, $paymentMethod]);
+    $orderSql = "INSERT INTO orders (user_id, total, shipping_address, phone, status, payment_status, payment_method";
+    $orderArgs = [(int)$user['id'], $total, $address, $phone, $paymentMethod];
+    if ($hasLocationColumns) {
+        $orderSql .= ', shipping_latitude, shipping_longitude';
+        $orderArgs[] = $shippingLocation['latitude'] ?? null;
+        $orderArgs[] = $shippingLocation['longitude'] ?? null;
+    }
+    $orderSql .= ") VALUES (?,?,?,?, 'pending', 'unpaid', ?" . ($hasLocationColumns ? ',?,?' : '') . ')';
+    $pdo->prepare($orderSql)->execute($orderArgs);
     $orderId = (int)$pdo->lastInsertId();
 
     $ins = $pdo->prepare('INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?,?,?,?)');
