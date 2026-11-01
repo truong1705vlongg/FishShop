@@ -4,7 +4,9 @@ Checkout offers two choices: cash on delivery, and bank transfer through PayOS. 
 
 ## Credentials to configure
 
-Create and verify a PayOS merchant account/channel at https://my.payos.vn. Put the channel's **Client ID**, **API Key**, and **Checksum Key** in environment variables `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, and `PAYOS_CHECKSUM_KEY`. Do not paste secrets into chat or commit them. `config/payos.php` reads these variables.
+Create and verify a PayOS merchant account/channel at https://my.payos.vn. Copy `.env.example` to `.env` and set `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, and `PAYOS_CHECKSUM_KEY`. The local `.env` is ignored by Git. Never commit credentials or paste them into chat. `config/payos.php` reads `.env` and lets server environment variables override it.
+
+The repository includes a `.githooks/pre-push` secret guard. It is enabled in the development clone with `git config core.hooksPath .githooks`; repeat this command in any other clone. GitHub does not receive local Git hooks, so also enable GitHub Secret Scanning and Push Protection in the repository settings for server-side blocking.
 
 Set `FISHSHOP_PUBLIC_URL` to the public HTTPS base address of this shop, with no trailing slash; for example `https://shop.example.com`. `localhost` cannot receive PayOS webhooks. Expose `/payos_webhook.php` publicly over HTTPS, then set that full URL as the channel webhook URL in PayOS. PayOS requires a publicly reachable URL and verifies it when configuring the channel. Return and cancel links are built from this same public base URL.
 

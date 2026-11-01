@@ -1,2 +1,5 @@
 config/payos.local.php
+.env
+.env.*
+!.env.example
 
