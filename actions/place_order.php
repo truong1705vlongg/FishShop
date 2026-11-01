@@ -1,10 +1,13 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/payos.php';
 $user = requireLogin();
 requirePost('checkout.php');
 
 $address = trim($_POST['shipping_address'] ?? '');
 $phone   = trim($_POST['phone'] ?? '');
+$paymentMethod = post_string('payment_method');
+if (!in_array($paymentMethod, ['cash', 'bank_transfer', 'payos'], true)) respond(false, 'Vui lòng chọn phương thức thanh toán.', 'checkout.php');
 if (mb_strlen($address) < 5 || mb_strlen($address) > 255) respond(false, 'Vui lòng nhập địa chỉ giao hàng (5-255 ký tự).', 'checkout.php');
 if (!preg_match('/^[0-9]{9,11}$/', $phone)) respond(false, 'Số điện thoại gồm 9-11 chữ số.', 'checkout.php');
 
@@ -39,8 +42,8 @@ try {
         $total += $q * (float)$p['price'];
     }
 
-    $pdo->prepare("INSERT INTO orders (user_id, total, shipping_address, phone, status, payment_status) VALUES (?,?,?,?, 'pending', 'unpaid')")
-        ->execute([(int)$user['id'], $total, $address, $phone]);
+    $pdo->prepare("INSERT INTO orders (user_id, total, shipping_address, phone, status, payment_status, payment_method) VALUES (?,?,?,?, 'pending', 'unpaid', ?)")
+        ->execute([(int)$user['id'], $total, $address, $phone, $paymentMethod]);
     $orderId = (int)$pdo->lastInsertId();
 
     $ins = $pdo->prepare('INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?,?,?,?)');
@@ -54,9 +57,18 @@ try {
     $pdo->commit();
 } catch (Throwable $ex) {
     if ($pdo->inTransaction()) $pdo->rollBack();
+    error_log('FishShop place order failed (' . get_class($ex) . ', code ' . (string)$ex->getCode() . ').');
     respond(false, 'Đặt hàng thất bại, giỏ hàng của bạn vẫn được giữ nguyên. Vui lòng thử lại.', 'checkout.php');
 }
 // Lưu địa chỉ/số điện thoại để lần sau tự điền sẵn
 $pdo->prepare('UPDATE users SET address = ?, phone = ? WHERE id = ?')->execute([$address, $phone, (int)$user['id']]);
-flash('success', 'Đã tạo đơn hàng #' . $orderId . '. Vui lòng chuyển khoản theo mã QR bên dưới.');
+flash('success', 'Đã tạo đơn hàng #' . $orderId . '.');
+if ($paymentMethod === 'payos') {
+    try {
+        payos_create_order_link($orderId);
+    } catch (Throwable $ex) {
+        error_log('FishShop PayOS checkout after order failed (' . get_class($ex) . ', code ' . (string)$ex->getCode() . ').');
+        flash('error', 'Đơn đã được tạo. Chưa mở được mã QR chuyển khoản; vào đơn hàng và bấm “Mở mã QR chuyển khoản” để thử lại.');
+    }
+}
 redirect('payment.php?id=' . $orderId);

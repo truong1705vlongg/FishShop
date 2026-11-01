@@ -28,7 +28,20 @@ include __DIR__ . '/includes/header.php';
       <div class="field"><label for="shipping_address">Địa chỉ giao hàng</label>
         <textarea id="shipping_address" name="shipping_address" data-rule="address" required><?= e($user['address']) ?></textarea>
         <small>Kiểm tra kỹ địa chỉ và số điện thoại trước khi đặt.</small></div>
-      <p class="hint" style="margin-bottom:16px">Sau khi đặt hàng, bạn sẽ nhận mã QR để chuyển khoản. Đơn hàng chỉ được xác nhận thanh toán sau khi quản trị viên kiểm tra giao dịch.</p>
+      <fieldset class="field" style="border:0;padding:0;margin:0 0 16px">
+        <legend style="font-size:13px;font-weight:600;margin-bottom:8px">Phương thức thanh toán</legend>
+        <div class="payment-options">
+          <label class="payment-option">
+            <input type="radio" name="payment_method" value="cash" required checked>
+            <span class="payment-option-copy"><b>Tiền mặt khi nhận hàng</b><small>Thanh toán trực tiếp cho nhân viên giao hàng.</small></span>
+          </label>
+          <label class="payment-option">
+            <input type="radio" name="payment_method" value="payos" required>
+            <span class="payment-option-copy"><b>Chuyển khoản ngân hàng</b><small>Quét mã QR; số tiền và nội dung đơn hàng sẽ được điền sẵn, hệ thống tự xác nhận.</small></span>
+            <span class="payment-badge">QR</span>
+          </label>
+        </div>
+      </fieldset>
       <button class="btn" type="submit">Đặt hàng</button>
       <a class="btn ghost" href="<?= url('cart.php') ?>">Quay lại giỏ hàng</a>
     </form>

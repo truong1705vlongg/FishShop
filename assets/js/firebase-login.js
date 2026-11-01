@@ -32,7 +32,9 @@
       const result = await ready.authSdk.signInWithPopup(ready.auth, ready.provider);
       status.textContent = 'Đang xác minh tài khoản…';
       const body = new FormData(form);
-      body.set('id_token', await result.user.getIdToken(true));
+      // signInWithPopup already returns a fresh user. Avoid forcing a second
+      // token refresh request before sending it to the PHP verifier.
+      body.set('id_token', await result.user.getIdToken());
       const response = await fetch(form.action, { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json' } });
       let data;
       try { data = await response.json(); } catch { throw new Error('Máy chủ chưa sẵn sàng. Vui lòng kiểm tra MySQL và thử lại.'); }

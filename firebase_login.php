@@ -13,12 +13,16 @@ if (isLoggedIn()) firebase_reply(200, ['ok' => true, 'redirect' => url('index.ph
 if (time() - (int)($_SESSION['firebase_last_attempt'] ?? 0) < 2) firebase_reply(429, ['ok' => false, 'message' => 'Vui lòng chờ vài giây rồi thử lại.']);
 $_SESSION['firebase_last_attempt'] = time();
 try {
+    $stage = 'firebase_token_verification';
     $info = verify_firebase_google_token(post_string('id_token'));
     // Google sign-in also creates a customer account on the first visit.
+    $stage = 'fishshop_account_link';
     $id = google_account_id(db(), $info, true);
+    $stage = 'account_status_check';
     $st = db()->prepare("SELECT id FROM users WHERE id = ? AND account_status = 'active'");
     $st->execute([$id]);
     if (!$st->fetchColumn()) throw new DomainException('Tài khoản đang bị khóa. Vui lòng liên hệ quản trị viên.');
+    $stage = 'session_creation';
     session_regenerate_id(true);
     unset($_SESSION['csrf'], $_SESSION['password_recovery'], $_SESSION['google_login']);
     $_SESSION['user_id'] = $id;
@@ -26,6 +30,8 @@ try {
 } catch (DomainException $e) {
     firebase_reply(401, ['ok' => false, 'message' => $e->getMessage()]);
 } catch (Throwable $e) {
-    error_log('FishShop: Firebase login failed (' . get_class($e) . ').');
+    $driverCode = $e instanceof PDOException && isset($e->errorInfo[1]) ? (string)$e->errorInfo[1] : 'n/a';
+    error_log('FishShop: Firebase login failed at ' . ($stage ?? 'initialization') . ' (' . get_class($e)
+        . ', code ' . (string)$e->getCode() . ', driver ' . $driverCode . ').');
     firebase_reply(503, ['ok' => false, 'message' => 'Chưa thể kết nối đăng nhập. Vui lòng thử lại hoặc dùng mật khẩu.']);
 }
