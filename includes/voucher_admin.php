@@ -18,7 +18,7 @@ function voucher_admin_validate(array $input): array
     $data['discount_type'] = $text('discount_type');
     $data['is_active'] = $text('is_active') === '1' ? 1 : 0;
     if (!preg_match('/^[A-Z0-9_-]{3,32}$/D', $data['code'])) $errors[] = 'Mã gồm 3–32 ký tự chữ, số, dấu gạch ngang hoặc gạch dưới.';
-    if (mb_strlen($data['name']) < 2 || mb_strlen($data['name']) > 120) $errors[] = 'Tên chương trình từ 2 đến 120 ký tự.';
+    if (mb_strlen($data['name']) < 2 || mb_strlen($data['name']) > 100) $errors[] = 'Tên chương trình từ 2 đến 100 ký tự.';
     if (!in_array($data['discount_type'], ['fixed', 'percent'], true)) $errors[] = 'Loại giảm giá không hợp lệ.';
     $numbers = [
         'discount_value' => [1, $data['discount_type'] === 'percent' ? 99 : 9999999999, false, 'Giá trị giảm'],

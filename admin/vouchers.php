@@ -57,7 +57,7 @@ include __DIR__ . '/_header.php';
     <fieldset <?= !$ready ? 'disabled' : '' ?> style="border:0;padding:0">
       <div class="two">
         <div class="field"><label for="voucher-code">Mã ưu đãi</label><input id="voucher-code" name="code" type="text" value="<?= e($form['code']) ?>" minlength="3" maxlength="32" pattern="[A-Za-z0-9_-]{3,32}" required <?= $existing ? 'readonly' : '' ?> placeholder="VD: FISH10"></div>
-        <div class="field"><label for="voucher-name">Tên chương trình</label><input id="voucher-name" name="name" type="text" maxlength="120" value="<?= e($form['name']) ?>" required placeholder="Ưu đãi khách hàng mới"></div>
+        <div class="field"><label for="voucher-name">Tên chương trình</label><input id="voucher-name" name="name" type="text" maxlength="100" value="<?= e($form['name']) ?>" required placeholder="Ưu đãi khách hàng mới"></div>
       </div>
       <div class="two">
         <div class="field"><label for="voucher-type">Loại giảm</label><select id="voucher-type" name="discount_type"><option value="percent" <?= $form['discount_type'] === 'percent' ? 'selected' : '' ?>>Theo phần trăm (%)</option><option value="fixed" <?= $form['discount_type'] === 'fixed' ? 'selected' : '' ?>>Số tiền cố định (đ)</option></select></div>

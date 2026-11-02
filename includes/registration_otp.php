@@ -1,10 +1,43 @@
 <?php
 require_once __DIR__ . '/auth.php';
 
+function registration_log_diagnostic(string $event, array $details = []): void {
+    // Callers only pass status codes/setting names, never credentials, addresses or OTP values.
+    $allowed = array_flip(['missing', 'reason', 'curl_code', 'smtp_code', 'exception', 'db_code', 'stage']);
+    $safe = array_intersect_key($details, $allowed);
+    error_log('[FishShop OTP] ' . $event . ' ' . json_encode($safe + ['php_sapi' => PHP_SAPI, 'php_ini' => php_ini_loaded_file() ?: 'none'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+}
+
+function registration_log_exception(string $stage, Throwable $ex): void {
+    $driver = $ex instanceof PDOException ? (int)($ex->errorInfo[1] ?? 0) : 0;
+    $reason = match ($driver) {1146 => 'database_table_missing', 1054 => 'database_column_missing', 1049 => 'database_not_found', 1045 => 'database_access_denied', default => 'registration_failed'};
+    registration_log_diagnostic('operation_failed', ['stage' => $stage, 'exception' => get_class($ex), 'db_code' => $driver, 'reason' => $reason]);
+}
+
+function registration_mail_issues(?array $config = null): array {
+    $c = $config ?? require __DIR__ . '/../config/mail.php';
+    $issues = [];
+    if (!function_exists('curl_init')) $issues[] = 'PHP_CURL_EXTENSION_MISSING';
+    elseif (!in_array('smtps', curl_version()['protocols'], true)) $issues[] = 'CURL_SMTPS_PROTOCOL_MISSING';
+    if (trim($c['gmail_address']) === '') $issues[] = 'FISHSHOP_GMAIL_ADDRESS_MISSING';
+    elseif (!filter_var($c['gmail_address'], FILTER_VALIDATE_EMAIL)) $issues[] = 'FISHSHOP_GMAIL_ADDRESS_INVALID';
+    if (trim($c['gmail_app_password']) === '') $issues[] = 'FISHSHOP_GMAIL_APP_PASSWORD_MISSING';
+    $ca = ini_get('curl.cainfo');
+    if ($ca !== '' && !is_file($ca)) $issues[] = 'CURL_CA_FILE_MISSING';
+    return $issues;
+}
+
 function registration_mail_ready(): bool {
-    $c = require __DIR__ . '/../config/mail.php';
-    return function_exists('curl_init') && filter_var($c['gmail_address'], FILTER_VALIDATE_EMAIL)
-        && trim($c['gmail_app_password']) !== '';
+    $issues = registration_mail_issues();
+    if ($issues) {
+        static $logged = [];
+        $fingerprint = implode(',', $issues);
+        if (!isset($logged[$fingerprint])) {
+            registration_log_diagnostic('configuration_unavailable', ['missing' => $issues]);
+            $logged[$fingerprint] = true;
+        }
+    }
+    return !$issues;
 }
 
 function registration_send_mail(string $email, string $code): void {
@@ -23,7 +56,12 @@ function registration_send_mail(string $email, string $code): void {
             CURLOPT_MAIL_FROM => $c['gmail_address'], CURLOPT_MAIL_RCPT => [$email], CURLOPT_UPLOAD => true,
             CURLOPT_INFILE => $stream, CURLOPT_INFILESIZE => strlen($message), CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 25, CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2]);
-        if (curl_exec($ch) === false) throw new RuntimeException('SMTP delivery failed');
+        if (curl_exec($ch) === false) {
+            $curlCode = curl_errno($ch);
+            $reason = match ($curlCode) {6 => 'smtp_dns_failed', 7 => 'smtp_connection_failed', 28 => 'smtp_timeout', 35 => 'smtp_tls_failed', 60 => 'smtp_certificate_untrusted', 67 => 'smtp_authentication_failed_check_app_password', 77 => 'smtp_ca_file_invalid', default => 'smtp_delivery_failed'};
+            registration_log_diagnostic('smtp_send_failed', ['curl_code' => $curlCode, 'smtp_code' => (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE), 'reason' => $reason]);
+            throw new RuntimeException('SMTP delivery failed');
+        }
     } finally { curl_close($ch); fclose($stream); }
 }
 

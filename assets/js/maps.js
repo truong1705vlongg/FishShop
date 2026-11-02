@@ -128,6 +128,9 @@
           showError(failure.code === 1 ? 'Bạn chưa cho phép truy cập vị trí. Hãy chọn điểm trực tiếp trên bản đồ.' : 'Chưa xác định được vị trí. Hãy chọn điểm trực tiếp trên bản đồ.');
         }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000});
       });
+      if (latitude.value !== '' && longitude.value !== '') {
+        selectPoint([Number(latitude.value), Number(longitude.value)]);
+      }
       widget.closest('form').addEventListener('reset', function () { if (!clear.disabled) clear.click(); });
     }).catch(function () {
       canvas.classList.add('map-unavailable');

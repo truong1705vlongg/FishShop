@@ -87,6 +87,7 @@ include __DIR__ . '/_header.php';
     <p style="margin:10px 0"><a class="btn ghost sm" href="<?= e($deliveryUrl) ?>" target="_blank" rel="noopener noreferrer">Xem điểm giao hàng</a></p>
     <?php endif; ?>
     <div class="sum"><span>Ngày đặt</span><span><?= e(date('d/m/Y H:i', strtotime($order['created_at']))) ?></span></div>
+    <?php $totalsOrder = $order; include __DIR__ . '/../includes/order_totals.php'; ?>
     <div class="sum t"><span>Tổng tiền</span><span><?= money($order['total']) ?></span></div>
     <form method="post" data-confirm="Lưu thay đổi trạng thái đơn hàng?">
       <?= csrf_field() ?><input type="hidden" name="order_id" value="<?= (int)$order['id'] ?>">

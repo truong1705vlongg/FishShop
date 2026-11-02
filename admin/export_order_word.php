@@ -93,6 +93,10 @@ p { margin: 3pt 0; }
       <td class="right"><?= e(money((float)$item['price'] * (int)$item['quantity'])) ?></td>
     </tr>
   <?php endforeach; ?>
+  <?php if ((int)($order['discount_amount'] ?? 0) > 0): ?>
+  <tr><td colspan="3" class="right">Tạm tính</td><td class="right"><?= e(money($order['subtotal'] ?? ((int)$order['total'] + (int)$order['discount_amount']))) ?></td></tr>
+  <tr><td colspan="3" class="right">Giảm giá · <?= e($order['voucher_code']) ?></td><td class="right">−<?= e(money($order['discount_amount'])) ?></td></tr>
+  <?php endif; ?>
   <tr><td colspan="3" class="right"><strong>Tổng cộng</strong></td><td class="right total"><?= e(money($order['total'])) ?></td></tr>
   </tbody>
 </table>

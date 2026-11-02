@@ -25,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (mb_strlen($old['address']) > 255) $errors[] = 'Địa chỉ tối đa 255 ký tự.';
 
     if (!$errors) {
+      try {
         $st = db()->prepare('SELECT username, email FROM users WHERE username = ? OR email = ?');
         $st->execute([$old['username'], $old['email']]);
         $existing = $st->fetch();
@@ -33,19 +34,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($existing) {
             $errors[] = 'Email đã được sử dụng, vui lòng dùng email khác.';
         } else {
-            try {
                 $data = $old;
                 $data['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
                 $pending = registration_issue(db(), $data, $_SERVER['REMOTE_ADDR'] ?? 'unknown');
                 session_regenerate_id(true);
                 $_SESSION['registration_pending'] = $pending;
                 redirect('register_verify.php');
-            } catch (DomainException $ex) {
-                $errors[] = $ex->getMessage();
-            } catch (Throwable $ex) {
-                $errors[] = 'Chưa thể gửi mã xác minh. Vui lòng thử lại sau.';
-            }
         }
+      } catch (DomainException $ex) {
+          $errors[] = $ex->getMessage();
+      } catch (Throwable $ex) {
+          registration_log_exception('issue_registration', $ex);
+          $errors[] = 'Chưa thể gửi mã xác minh. Vui lòng thử lại sau.';
+      }
     }
 }
 $pageTitle = 'Đăng ký'; $minimal = true;

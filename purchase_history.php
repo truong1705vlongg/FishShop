@@ -48,6 +48,7 @@ include __DIR__ . '/includes/header.php';
       <?php if ($deliveryUrl = shipping_location_url($order)): ?>
       <p style="margin:10px 0"><a class="btn ghost sm" href="<?= e($deliveryUrl) ?>" target="_blank" rel="noopener noreferrer">Xem điểm giao hàng</a></p>
       <?php endif; ?>
+      <?php $totalsOrder = $order; include __DIR__ . '/includes/order_totals.php'; ?>
       <div class="sum t"><span>Tổng tiền</span><span><?= money($order['total']) ?></span></div>
       <?php if ($order['status'] !== 'cancelled' && $order['payment_status'] !== 'paid'): ?>
         <?php $orderPaymentMethod = $order['payment_method'] ?? 'bank_transfer'; ?>

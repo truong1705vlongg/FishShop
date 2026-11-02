@@ -32,8 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else throw new DomainException('Yêu cầu không hợp lệ.');
     } catch (DomainException $e) { $error = $e->getMessage(); }
     catch (PDOException $e) {
+        registration_log_exception('verify_registration', $e);
         $error = $e->getCode() === '23000' ? 'Tên đăng nhập hoặc email đã được sử dụng. Vui lòng sửa thông tin hoặc đăng nhập.' : 'Chưa thể xác minh đăng ký. Vui lòng thử lại sau.';
-    } catch (Throwable $e) { $error = 'Chưa thể xác minh đăng ký. Vui lòng thử lại sau.'; }
+    } catch (Throwable $e) { registration_log_exception('verify_registration', $e); $error = 'Chưa thể xác minh đăng ký. Vui lòng thử lại sau.'; }
 }
 $pageTitle = 'Xác minh đăng ký'; $minimal = true;
 include __DIR__ . '/includes/header.php';
