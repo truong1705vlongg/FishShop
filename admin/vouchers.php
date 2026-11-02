@@ -48,7 +48,7 @@ $pageTitle = 'Mã giảm giá';
 include __DIR__ . '/_header.php';
 ?>
 <section class="page-intro"><h1>Mã giảm giá</h1><p>Tạo ưu đãi, đặt thời hạn và giới hạn lượt sử dụng. Mỗi đơn áp dụng một mã.</p></section>
-<?php if (!$ready): ?><div class="alert warn">Dữ liệu mã giảm giá chưa được khởi tạo. Xem hướng dẫn VOUCHERS_SETUP.md để cập nhật database.</div><?php endif; ?>
+<?php if (!$ready): ?><div class="alert warn">Dữ liệu mã giảm giá chưa được khởi tạo. Chạy database/migrate_vouchers.php bằng PHP để cập nhật database.</div><?php endif; ?>
 <?php if ($errors): ?><div class="alert err" role="alert"><?php foreach ($errors as $error): ?><div><?= e($error) ?></div><?php endforeach; ?></div><?php endif; ?>
 <section class="card voucher-admin-card">
   <div class="voucher-card-heading"><h2><?= $existing ? 'Chỉnh sửa ' . e($existing['code']) : 'Tạo mã mới' ?></h2><?php if ($existing): ?><a href="<?= e($voucherAdminUrl) ?>" class="btn ghost sm">Tạo mã khác</a><?php endif; ?></div>

@@ -24,7 +24,7 @@ function firebase_environment_issues(?array $config = null): array
 
 function firebase_transport_reason(int $code): string
 {
-    return match ($code) {5 => 'proxy_dns_failed', 6 => 'google_dns_failed', 7 => 'google_connection_failed', 28 => 'google_connection_timeout', 35 => 'google_tls_handshake_failed', 60 => 'google_certificate_untrusted', 77 => 'curl_ca_file_invalid', default => 'google_transport_failed'};
+    return match ($code) {5 => 'proxy_dns_failed', 6 => 'google_dns_failed', 7 => 'google_connection_failed', 28 => 'google_connection_timeout', 35 => 'google_tls_handshake_failed', 55 => 'google_send_failed', 56 => 'google_connection_reset_or_receive_failed', 60 => 'google_certificate_untrusted', 77 => 'curl_ca_file_invalid', default => 'google_transport_failed'};
 }
 
 function firebase_api_error_code(array $response): string
