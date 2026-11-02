@@ -31,8 +31,10 @@ C:\xampp\php\php.exe C:\xampp\htdocs\FishShop\database\check_google_login.php
 
 LOG
 ---
-Tim [FishShop OTP] hoac [FishShop Firebase] trong PHP error_log.
-XAMPP hien tai: C:\xampp\php\logs\php_error_log.
-Lenh kiem tra in ra php.ini va duong dan log dang dung tren may chay.
+Tim [FishShop OTP] hoac [FishShop Firebase] trong log rieng tu tao:
+C:\xampp\htdocs\FishShop\storage\logs\auth.log.php
+File log bi chan truy cap web va bi Git bo qua. Doc bang PowerShell/Notepad.
+Lenh kiem tra tu tao file log va bao thu muc co ghi duoc hay khong.
+Dong loi cung duoc gui toi PHP/Apache error_log neu duong dan do hoat dong.
 Chi gui dong loi lien quan; khong gui .env, API key, mat khau hoac token.
 Khong tat xac minh TLS de bo qua loi chung chi.

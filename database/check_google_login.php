@@ -1,5 +1,5 @@
 <?php
-// Read-only diagnostics. Uses an intentionally invalid token; never signs in or prints credentials.
+// No account/database changes. Writes a diagnostic log; never signs in or prints credentials.
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/firebase_diagnostics.php';
@@ -11,7 +11,8 @@ function google_setup_result(bool $ok, string $label): void {
     if (!$ok) $failures++;
 }
 echo 'PHP ini: ' . (php_ini_loaded_file() ?: 'none') . PHP_EOL;
-echo 'PHP log: ' . (ini_get('error_log') ?: 'Apache error log') . PHP_EOL;
+echo 'Auth log: ' . fishshop_auth_log_path() . PHP_EOL;
+google_setup_result(fishshop_auth_log('[FishShop Firebase] setup_check_started ' . json_encode(['php_sapi' => PHP_SAPI, 'php_ini' => php_ini_loaded_file() ?: 'none'])), 'Thu muc log FishShop ghi duoc');
 google_setup_result(is_file(__DIR__ . '/../.env'), '.env nam cung thu muc voi login.php');
 $issues = firebase_environment_issues($config);
 foreach ($issues as $issue) google_setup_result(false, $issue);

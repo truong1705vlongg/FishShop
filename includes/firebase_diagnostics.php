@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/auth_log.php';
 // No tokens, API keys, account details, request URLs or raw API error bodies in logs.
 class FirebaseBackendException extends RuntimeException
 {
@@ -74,7 +75,7 @@ function firebase_log_login_failure(string $stage, Throwable $error, string $ref
         1045 => 'database_access_denied', 1049 => 'database_not_found', 1205 => 'database_lock_timeout', 1213 => 'database_deadlock', default => 'backend_operation_failed'
     };
     $context = $error instanceof FirebaseBackendException ? array_intersect_key($error->diagnostics, array_flip(['missing', 'curl_code', 'http_status', 'firebase_error'])) : [];
-    error_log('[FishShop Firebase] login_failed ' . json_encode($context + [
+    fishshop_auth_log('[FishShop Firebase] login_failed ' . json_encode($context + [
         'reference' => $reference, 'stage' => $stage, 'reason' => $reason, 'exception' => get_class($error),
         'db_code' => $driver, 'php_sapi' => PHP_SAPI, 'php_ini' => php_ini_loaded_file() ?: 'none',
     ], JSON_UNESCAPED_SLASHES));

@@ -1,11 +1,12 @@
 <?php
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/auth_log.php';
 
 function registration_log_diagnostic(string $event, array $details = []): void {
     // Callers only pass status codes/setting names, never credentials, addresses or OTP values.
     $allowed = array_flip(['missing', 'reason', 'curl_code', 'smtp_code', 'exception', 'db_code', 'stage']);
     $safe = array_intersect_key($details, $allowed);
-    error_log('[FishShop OTP] ' . $event . ' ' . json_encode($safe + ['php_sapi' => PHP_SAPI, 'php_ini' => php_ini_loaded_file() ?: 'none'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    fishshop_auth_log('[FishShop OTP] ' . $event . ' ' . json_encode($safe + ['php_sapi' => PHP_SAPI, 'php_ini' => php_ini_loaded_file() ?: 'none'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 }
 
 function registration_log_exception(string $stage, Throwable $ex): void {
@@ -96,7 +97,7 @@ function registration_issue(PDO $pdo, array $data, string $ip, ?callable $mailer
     try { ($mailer ?? 'registration_send_mail')($data['email'], $code); }
     catch (Throwable $e) {
         $pdo->prepare('DELETE FROM registration_otps WHERE challenge_hash = ?')->execute([$hash]);
-        error_log('FishShop: registration OTP delivery failed. Check Gmail SMTP configuration.');
+        registration_log_exception('smtp_delivery', $e);
         throw new DomainException('Chưa gửi được mã xác minh. Vui lòng thử lại sau hoặc đăng ký bằng Google.');
     }
     return ['data' => $data, 'token' => $token, 'expires_at' => time() + 300, 'created_at' => time()];

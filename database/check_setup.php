@@ -2,6 +2,7 @@
 // Local diagnostics only: never prints credentials, tokens, email addresses or user data.
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/auth_log.php';
 $mail = require __DIR__ . '/../config/mail.php';
 $failures = 0;
 function setup_check(bool $ok, string $label, string $fix = ''): void {
@@ -17,7 +18,8 @@ setup_check(filter_var($mail['gmail_address'], FILTER_VALIDATE_EMAIL) !== false,
 setup_check(trim($mail['gmail_app_password']) !== '', 'FISHSHOP_GMAIL_APP_PASSWORD da dien', 'Dien App Password cua Gmail gui thu; khong dung mat khau Gmail thuong.');
 $ca = ini_get('curl.cainfo');
 echo 'PHP ini: ' . (php_ini_loaded_file() ?: 'none') . PHP_EOL;
-echo 'OTP log: ' . (ini_get('error_log') ?: 'Apache error log') . PHP_EOL;
+echo 'Auth log: ' . fishshop_auth_log_path() . PHP_EOL;
+setup_check(fishshop_auth_log('[FishShop OTP] setup_check_started ' . json_encode(['php_sapi' => PHP_SAPI, 'php_ini' => php_ini_loaded_file() ?: 'none'])), 'Thu muc log FishShop ghi duoc', 'Kiem tra quyen ghi storage/logs trong thu muc FishShop.');
 if ($ca !== '') setup_check(is_file($ca), 'File chung chi CA trong curl.cainfo ton tai', 'Sua duong dan curl.cainfo cho dung tren may nay; khong tat xac minh TLS.');
 try {
     $pdo = new PDO('mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4', DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
