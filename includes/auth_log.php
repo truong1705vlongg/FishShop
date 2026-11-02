@@ -4,6 +4,24 @@ function fishshop_auth_log_path(): string
     return dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'auth.log.php';
 }
 
+function fishshop_auth_runtime(): array
+{
+    $envPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . '.env';
+    $ca = (string)ini_get('curl.cainfo');
+    return [
+        'php_sapi' => PHP_SAPI,
+        'php_ini' => php_ini_loaded_file() ?: 'none',
+        'additional_ini' => php_ini_scanned_files() ?: 'none',
+        'extension_dir' => (string)ini_get('extension_dir'),
+        'curl_extension_loaded' => extension_loaded('curl'),
+        'curl_function_available' => function_exists('curl_init'),
+        'curl_cainfo' => $ca !== '' ? $ca : 'system_default',
+        'curl_ca_file_exists' => $ca !== '' ? is_file($ca) : null,
+        'env_file_exists' => is_file($envPath),
+        'env_file_readable' => is_readable($envPath),
+    ];
+}
+
 function fishshop_write_auth_log(string $path, string $message): bool
 {
     $directory = dirname($path);

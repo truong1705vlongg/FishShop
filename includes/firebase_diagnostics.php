@@ -77,6 +77,6 @@ function firebase_log_login_failure(string $stage, Throwable $error, string $ref
     $context = $error instanceof FirebaseBackendException ? array_intersect_key($error->diagnostics, array_flip(['missing', 'curl_code', 'http_status', 'firebase_error'])) : [];
     fishshop_auth_log('[FishShop Firebase] login_failed ' . json_encode($context + [
         'reference' => $reference, 'stage' => $stage, 'reason' => $reason, 'exception' => get_class($error),
-        'db_code' => $driver, 'php_sapi' => PHP_SAPI, 'php_ini' => php_ini_loaded_file() ?: 'none',
-    ], JSON_UNESCAPED_SLASHES));
+        'db_code' => $driver,
+    ] + fishshop_auth_runtime(), JSON_UNESCAPED_SLASHES));
 }

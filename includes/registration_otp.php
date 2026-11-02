@@ -6,7 +6,7 @@ function registration_log_diagnostic(string $event, array $details = []): void {
     // Callers only pass status codes/setting names, never credentials, addresses or OTP values.
     $allowed = array_flip(['missing', 'reason', 'curl_code', 'smtp_code', 'exception', 'db_code', 'stage']);
     $safe = array_intersect_key($details, $allowed);
-    fishshop_auth_log('[FishShop OTP] ' . $event . ' ' . json_encode($safe + ['php_sapi' => PHP_SAPI, 'php_ini' => php_ini_loaded_file() ?: 'none'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    fishshop_auth_log('[FishShop OTP] ' . $event . ' ' . json_encode($safe + fishshop_auth_runtime(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 }
 
 function registration_log_exception(string $stage, Throwable $ex): void {
