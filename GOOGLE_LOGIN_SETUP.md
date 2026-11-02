@@ -44,6 +44,18 @@ PHP cần cURL và chứng chỉ CA hợp lệ; giữ xác minh TLS bật. Máy 
 
 ## Kiểm thử
 
+Nếu máy Windows khác trả `firebase_login.php 503`, trên chính máy đó chạy:
+
+```powershell
+C:\xampp\php\php.exe C:\xampp\htdocs\FishShop\database\check_google_login.php
+```
+
+Lệnh kiểm tra `.env`, cURL/HTTPS, file CA, khả năng gọi Firebase và các bảng/cột dùng khi đăng nhập. Nó gửi một token giả cố định để Firebase từ chối, không đăng nhập tài khoản thật, không thay đổi database và không in API key/token. Các dòng `[LOI]` chỉ ra lỗi kết nối, chứng chỉ, API key bị hạn chế hoặc schema thiếu.
+
+Lỗi `503` từ PHP có mã hỗ trợ, tương ứng dòng `[FishShop Firebase] login_failed` trong PHP log (`C:\xampp\php\logs\php_error_log` ở máy hiện tại). Log ghi bước lỗi, mã cURL/HTTP/database và tên cấu hình thiếu; không ghi ID token, email, API key, SQL hay thông báo exception gốc.
+
+Cảnh báo `Cross-Origin-Opener-Policy ... window.closed` liên quan popup. Nếu trình duyệt đã gửi POST đến `firebase_login.php` và PHP trả `503`, phải xem lỗi PHP riêng; chỉ đổi chính sách popup không giải quyết lỗi backend. Không tắt kiểm tra token, TLS hay CORS để bỏ qua lỗi. Máy hiện tại không đặt COOP nghiêm ngặt trên trang đăng nhập.
+
 - `C:\xampp\php\php.exe database\verify_firebase.php`: kiểm tra dữ liệu token và định danh.
 - Thêm `--remote`: gửi token giả tới Firebase để xác nhận bị từ chối.
 - `C:\xampp\php\php.exe database\verify_firebase.php 3306 --remote`: tạo database thử có tên ngẫu nhiên, kiểm tra đăng ký, liên kết, quyền customer và tài khoản khóa, rồi xóa database thử; không sửa dữ liệu tài khoản thật.

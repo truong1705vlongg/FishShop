@@ -35,8 +35,8 @@ try {
 } catch (DomainException $e) {
     firebase_reply(401, ['ok' => false, 'message' => $e->getMessage()]);
 } catch (Throwable $e) {
-    $driverCode = $e instanceof PDOException && isset($e->errorInfo[1]) ? (string)$e->errorInfo[1] : 'n/a';
-    error_log('FishShop: Firebase login failed at ' . ($stage ?? 'initialization') . ' (' . get_class($e)
-        . ', code ' . (string)$e->getCode() . ', driver ' . $driverCode . ').');
-    firebase_reply(503, ['ok' => false, 'message' => 'Chưa thể kết nối đăng nhập. Vui lòng thử lại hoặc dùng mật khẩu.']);
+    $reference = bin2hex(random_bytes(5));
+    firebase_log_login_failure($stage ?? 'initialization', $e, $reference);
+    firebase_reply(503, ['ok' => false, 'reference' => $reference,
+        'message' => 'Máy chủ chưa hoàn tất đăng nhập Google. Vui lòng thử lại hoặc dùng mật khẩu. Mã hỗ trợ: ' . $reference . '.']);
 }
