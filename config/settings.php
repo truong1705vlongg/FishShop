@@ -1,0 +1,30 @@
+<?php
+if (PHP_SAPI !== 'cli' && realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) { http_response_code(404); exit; }
+// Public template: edit this PHP array or use the private settings.local.php override.
+return array (
+  'FISHSHOP_GMAIL_ADDRESS' => '',
+  'FISHSHOP_GMAIL_APP_PASSWORD' => '',
+  'PAYOS_CLIENT_ID' => '',
+  'PAYOS_API_KEY' => '',
+  'PAYOS_CHECKSUM_KEY' => '',
+  'FISHSHOP_PUBLIC_URL' => 'http://localhost/FishShop',
+  'FISHSHOP_FIREBASE_API_KEY' => '',
+  'FISHSHOP_FIREBASE_AUTH_DOMAIN' => '',
+  'FISHSHOP_FIREBASE_PROJECT_ID' => '',
+  'FISHSHOP_FIREBASE_STORAGE_BUCKET' => '',
+  'FISHSHOP_FIREBASE_MESSAGING_SENDER_ID' => '',
+  'FISHSHOP_FIREBASE_APP_ID' => '',
+  'FISHSHOP_FIREBASE_MEASUREMENT_ID' => '',
+  'FISHSHOP_GOOGLE_CLIENT_ID' => '',
+  'FISHSHOP_GOOGLE_CLIENT_SECRET' => '',
+  'FISHSHOP_GOOGLE_REDIRECT_URI' => 'http://localhost/FishShop/google_callback.php',
+  'CLOUDINARY_CLOUD_NAME' => '',
+  'CLOUDINARY_API_KEY' => '',
+  'CLOUDINARY_API_SECRET' => '',
+  'CLOUDINARY_FOLDER' => 'fishshop',
+  'FISHSHOP_STORE_LOCATION_NAME' => 'Fish Shop',
+  'FISHSHOP_STORE_ADDRESS' => '',
+  'FISHSHOP_STORE_LATITUDE' => '',
+  'FISHSHOP_STORE_LONGITUDE' => '',
+  'FISHSHOP_MAP_TILE_URL' => 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+);

@@ -19,11 +19,11 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 
   for commit in $commits; do
     paths=$(git ls-tree -r --name-only "$commit")
-    printf '%s\n' "$paths" | grep -E '(^|/)\.env($|\.)|(^|/)payos\.local\.php$' | grep -Ev '(^|/)\.env\.example$' >/dev/null \
+    printf '%s\n' "$paths" | grep -E '(^|/)\.env($|\.)|(^|/)(payos|settings)\.local\.php$' | grep -Ev '(^|/)\.env\.example$' >/dev/null \
       && fail "secret configuration file included in $commit"
 
     additions=$(git diff-tree --no-commit-id --root --unified=0 --diff-filter=ACMRT -r "$commit" | sed -n 's/^+//p')
-    printf '%s\n' "$additions" | grep -Eiq "AIza[0-9A-Za-z_-]{30,}|(PAYOS_API_KEY|PAYOS_CHECKSUM_KEY|FISHSHOP_GMAIL_APP_PASSWORD|FISHSHOP_GOOGLE_CLIENT_SECRET|api_key|checksum_key|client_secret|gmail_app_password)[^[:alnum:]]{0,12}['\"][A-Za-z0-9_=-]{16,}['\"]" \
+    printf '%s\n' "$additions" | grep -Eiq "AIza[0-9A-Za-z_-]{30,}|(PAYOS_API_KEY|PAYOS_CHECKSUM_KEY|FISHSHOP_GMAIL_APP_PASSWORD|FISHSHOP_GOOGLE_CLIENT_SECRET|CLOUDINARY_API_SECRET|api_secret|api_key|checksum_key|client_secret|gmail_app_password)[^[:alnum:]]{0,12}['\"][A-Za-z0-9_=-]{16,}['\"]" \
       && fail "credential-like value found in added lines of $commit"
   done
 done

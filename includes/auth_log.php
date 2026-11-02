@@ -6,7 +6,8 @@ function fishshop_auth_log_path(): string
 
 function fishshop_auth_runtime(): array
 {
-    $envPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . '.env';
+    $settingsPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'settings.local.php';
+    if (!is_file($settingsPath)) $settingsPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'settings.php';
     $ca = (string)ini_get('curl.cainfo');
     return [
         'php_sapi' => PHP_SAPI,
@@ -17,8 +18,10 @@ function fishshop_auth_runtime(): array
         'curl_function_available' => function_exists('curl_init'),
         'curl_cainfo' => $ca !== '' ? $ca : 'system_default',
         'curl_ca_file_exists' => $ca !== '' ? is_file($ca) : null,
-        'env_file_exists' => is_file($envPath),
-        'env_file_readable' => is_readable($envPath),
+        'configuration_source' => 'php_array',
+        'config_file' => $settingsPath,
+        'config_file_exists' => is_file($settingsPath),
+        'config_file_readable' => is_readable($settingsPath),
     ];
 }
 

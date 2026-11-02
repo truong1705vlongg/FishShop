@@ -1,40 +1,43 @@
-FISH SHOP - CAI DAT VA KIEM TRA
-=============================
+FISH SHOP - NHANH XAMPP CAU HINH PHP
+==================================
 
-1. Bat Apache va MySQL trong XAMPP (PHP 8.2, curl, pdo_mysql, mbstring).
-2. Dat code tai C:\xampp\htdocs\FishShop. Neu dung URL /Quantri thi giu thu muc
-   C:\xampp\htdocs\Quantri chuyen tiep ve code admin trong FishShop.
-3. Cai moi: tao/chon database WebBanCa va import database\WebBanCa.sql.
-   Khong import de dump vao database dang co du lieu. Sao luu truoc khi nang cap.
-4. Chinh ket noi va BASE_URL trong config\database.php neu khac mac dinh.
-5. Chep .env rieng sang may moi hoac tao tu .env.example va dien cau hinh that.
-   .env khong di theo GitHub; SQL khong chua cau hinh Gmail/Firebase/Cloudinary.
-   Ten cac bien can dien da nam trong .env.example. Khong push .env len Git.
-6. Mo http://localhost/FishShop/ de xem hang; chi dang nhap khi dat hang/xem
-   tai khoan. Quan tri dang nhap tai http://localhost/Quantri/login.php.
+Nhanh codex/xampp-php-config khong doc .env va khong doc bien moi truong.
+Database van cau hinh truc tiep trong config/database.php.
 
-DATABASE CU
------------
-Neu thieu tinh nang, chay migration con thieu tu thu muc goc FishShop:
-C:\xampp\php\php.exe database\migrate_delivery_location.php
-C:\xampp\php\php.exe database\migrate_vouchers.php
-OTP va Google: cac file database\RegistrationOtp.sql, database\FirebaseLogin.sql
-chi tao bang con thieu, khong xoa tai khoan. Ma giam gia duoc tao trong quan tri.
+CAU HINH
+--------
+- config/settings.php: mang PHP mau, cac khoa bi mat de trong tren GitHub.
+- config/settings.local.php: mang PHP da dien thong tin that, tu dong ghi de
+  ban mau. File nay bi Git va pre-push chan de tranh lo Gmail/PayOS/Cloudinary.
+- Chep settings.local.php tu may da cau hinh sang thu muc config tren may moi.
+  Goi ZIP cau hinh rieng chi can giai nen file nay vao config, khong can .env.
+- Cung co the dien truc tiep config/settings.php tren may chay, nhung khong
+  commit/push file da dien khoa that len GitHub.
+- File .env cu neu con tren may chi la ban luu de quay lai main; nhanh nay
+  khong doc no. Khong can xoa .env cua main.
 
-KIEM TRA TREN CHINH MAY BI LOI
-----------------------------
-OTP/cau hinh/database:
+CHAY TREN XAMPP
+---------------
+1. Bat Apache va MySQL; PHP 8.2 voi curl, pdo_mysql, mbstring.
+2. Dat code tai C:\xampp\htdocs\FishShop va chep cau hinh PHP that nhu tren.
+3. Cai moi: tao database WebBanCa, import database/WebBanCa.sql. Khong import
+   de dump vao database da co du lieu. Sao luu truoc khi nang cap.
+4. Giu C:\xampp\htdocs\Quantri neu dang dung URL /Quantri chuyen tiep admin.
+5. Mo http://localhost/FishShop/; dat hang moi can dang nhap.
+6. Neu Apache bao thieu curl hoac CA, sua php.ini va Stop/Start Apache.
+   Chuyen sang cau hinh PHP khong tu sua loi extension/chung chi cua XAMPP.
+
+KIEM TRA
+--------
 C:\xampp\php\php.exe C:\xampp\htdocs\FishShop\database\check_setup.php
-
-Google (kiem tra HTTPS bang token gia, khong dang nhap tai khoan that):
 C:\xampp\php\php.exe C:\xampp\htdocs\FishShop\database\check_google_login.php
 
-LOG
----
-Tim [FishShop OTP] hoac [FishShop Firebase] trong log rieng tu tao:
+Migration database cu, chay tu thu muc FishShop:
+C:\xampp\php\php.exe database\migrate_delivery_location.php
+C:\xampp\php\php.exe database\migrate_vouchers.php
+
+LOG RIENG
+---------
 C:\xampp\htdocs\FishShop\storage\logs\auth.log.php
-File log bi chan truy cap web va bi Git bo qua. Doc bang PowerShell/Notepad.
-Lenh kiem tra tu tao file log va bao thu muc co ghi duoc hay khong.
-Dong loi cung duoc gui toi PHP/Apache error_log neu duong dan do hoat dong.
-Chi gui dong loi lien quan; khong gui .env, API key, mat khau hoac token.
-Khong tat xac minh TLS de bo qua loi chung chi.
+Tim [FishShop OTP] hoac [FishShop Firebase]. File bi chan truy cap web va Git.
+Chi gui dong loi; khong gui khoa, mat khau, token hoac file settings.local.php.

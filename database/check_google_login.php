@@ -13,7 +13,7 @@ function google_setup_result(bool $ok, string $label): void {
 echo 'PHP ini: ' . (php_ini_loaded_file() ?: 'none') . PHP_EOL;
 echo 'Auth log: ' . fishshop_auth_log_path() . PHP_EOL;
 google_setup_result(fishshop_auth_log('[FishShop Firebase] setup_check_started ' . json_encode(['php_sapi' => PHP_SAPI, 'php_ini' => php_ini_loaded_file() ?: 'none'])), 'Thu muc log FishShop ghi duoc');
-google_setup_result(is_file(__DIR__ . '/../.env'), '.env nam cung thu muc voi login.php');
+google_setup_result(is_file(__DIR__ . '/../config/settings.php'), 'Cau hinh PHP config/settings.php (khong dung .env)');
 $issues = firebase_environment_issues($config);
 foreach ($issues as $issue) google_setup_result(false, $issue);
 if (!$issues) {
@@ -48,5 +48,5 @@ try {
 } catch (PDOException $error) {
     google_setup_result(false, 'Database, driver_code=' . (int)($error->errorInfo[1] ?? 0));
 }
-echo PHP_EOL . ($failures ? 'Gui cac dong [LOI] de xac dinh loi. Khong gui .env hoac token.' : 'Kiem tra Google backend dat. Dang nhap tai khoan that van can thu trong trinh duyet.') . PHP_EOL;
+echo PHP_EOL . ($failures ? 'Gui cac dong [LOI] de xac dinh loi. Khong gui file cau hinh that hoac token.' : 'Kiem tra Google backend dat. Dang nhap tai khoan that van can thu trong trinh duyet.') . PHP_EOL;
 exit($failures ? 1 : 0);

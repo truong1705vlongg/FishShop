@@ -10,12 +10,12 @@ function setup_check(bool $ok, string $label, string $fix = ''): void {
     echo ($ok ? '[OK] ' : '[THIEU] ') . $label . PHP_EOL;
     if (!$ok) { $failures++; if ($fix !== '') echo '  ' . $fix . PHP_EOL; }
 }
-setup_check(is_file(__DIR__ . '/../.env'), 'File .env o thu muc goc FishShop', 'Chep .env cua may da cau hinh; file nay khong di theo GitHub.');
+setup_check(is_file(__DIR__ . '/../config/settings.php'), 'File cau hinh PHP config/settings.php', 'Chep cau hinh that vao config/settings.local.php tren may nay.');
 setup_check(function_exists('curl_init'), 'PHP extension curl', 'Bat extension=curl trong php.ini cua Apache, sau do khoi dong lai Apache.');
 $protocols = function_exists('curl_version') ? curl_version()['protocols'] : [];
 setup_check(in_array('smtps', $protocols, true), 'cURL ho tro SMTPS');
-setup_check(filter_var($mail['gmail_address'], FILTER_VALIDATE_EMAIL) !== false, 'FISHSHOP_GMAIL_ADDRESS hop le', 'Dien Gmail gui thu cua cua hang vao .env.');
-setup_check(trim($mail['gmail_app_password']) !== '', 'FISHSHOP_GMAIL_APP_PASSWORD da dien', 'Dien App Password cua Gmail gui thu; khong dung mat khau Gmail thuong.');
+setup_check(filter_var($mail['gmail_address'], FILTER_VALIDATE_EMAIL) !== false, 'FISHSHOP_GMAIL_ADDRESS hop le', 'Dien Gmail gui thu vao config/settings.local.php.');
+setup_check(trim($mail['gmail_app_password']) !== '', 'FISHSHOP_GMAIL_APP_PASSWORD da dien', 'Dien App Password vao config/settings.local.php; khong dung mat khau Gmail thuong.');
 $ca = ini_get('curl.cainfo');
 echo 'PHP ini: ' . (php_ini_loaded_file() ?: 'none') . PHP_EOL;
 echo 'Auth log: ' . fishshop_auth_log_path() . PHP_EOL;
@@ -41,5 +41,5 @@ try {
 } catch (PDOException $ex) {
     setup_check(false, 'Ket noi/kiem tra database', 'Bat MySQL va kiem tra config/database.php; ma loi ' . (int)($ex->errorInfo[1] ?? 0) . '.');
 }
-echo PHP_EOL . ($failures ? 'Co ' . $failures . ' muc can sua. Chi gui cac dong THIEU; khong gui noi dung .env.' : 'Cau hinh va bang dang ky day du. Chua gui email that trong kiem tra nay.') . PHP_EOL;
+echo PHP_EOL . ($failures ? 'Co ' . $failures . ' muc can sua. Chi gui cac dong THIEU; khong gui file cau hinh that.' : 'Cau hinh PHP va bang dang ky day du. Chua gui email that trong kiem tra nay.') . PHP_EOL;
 exit($failures ? 1 : 0);
