@@ -59,7 +59,7 @@ include __DIR__ . '/includes/header.php';
   <div class="auth-divider"><span>hoặc</span></div>
   <form method="post" action="<?= url('firebase_login.php') ?>" data-firebase-login>
     <?= csrf_field() ?>
-    <button class="btn block google-signin" type="submit">
+    <button class="btn block google-signin" type="submit" disabled>
       <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
         <path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5h6.6c3.9-3.6 6.1-8.8 6.1-14.9z"/>
         <path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.9l-6.6-5c-1.8 1.2-4.1 1.9-6.9 1.9-5.3 0-9.8-3.6-11.4-8.4H5.8v5.2A20 20 0 0 0 24 44z"/>

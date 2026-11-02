@@ -57,7 +57,7 @@ include __DIR__ . '/includes/header.php';
   <p class="sub">Đăng ký bằng email cần xác minh mã OTP trước khi tạo tài khoản.</p>
   <form method="post" action="<?= url('firebase_login.php') ?>" data-firebase-login>
     <?= csrf_field() ?><input type="hidden" name="intent" value="register">
-    <button class="btn block google-signin" type="submit">Đăng ký bằng Google</button>
+    <button class="btn block google-signin" type="submit" disabled>Đăng ký bằng Google</button>
   </form>
   <?php include __DIR__ . '/includes/firebase_scripts.php'; ?>
   <div class="auth-divider"><span>hoặc đăng ký bằng email</span></div>
