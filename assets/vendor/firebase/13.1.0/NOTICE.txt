@@ -1,0 +1,21 @@
+Firebase JavaScript SDK 13.1.0
+Copyright Google LLC and Firebase contributors.
+Distributed under the Apache License 2.0; see LICENSE.txt.
+Upstream copyright and license notices are preserved in the JavaScript files.
+
+Official upstream files:
+https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js
+https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js
+
+Upstream SHA-256:
+firebase-app.js: 5f9f6e699f201010941ff6e116b7dbfc5794ab7b4524875d1a734acdd2994d06
+firebase-auth.js: 72decbdf62edb7d86249db701206bf08a6ef694ac1a96105b9aac7c3cecb0d0d
+
+Local modifications:
+- firebase-auth.js imports ./firebase-app.js instead of the CDN URL.
+- Removed sourceMappingURL comments because source maps are not distributed.
+- Normalized one trailing space and final blank lines for repository checks.
+
+Keep both files in this versioned directory when deploying. Both application
+and auth must import the same app module URL. Actual sign-in still requires
+network access to Google and the configured Firebase auth domain.

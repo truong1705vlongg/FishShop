@@ -43,8 +43,8 @@
     status.textContent = 'Đang chuẩn bị đăng nhập Google…';
     initializationTimer = window.setTimeout(() => failInitialization('sdk/load-timeout'), 15000);
     Promise.all([
-      import('https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js'),
-      import('https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js')
+      import('../vendor/firebase/13.1.0/firebase-app.js'),
+      import('../vendor/firebase/13.1.0/firebase-auth.js')
     ]).then(async ([appSdk, authSdk]) => {
       const app = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(config);
       const auth = authSdk.getAuth(app);

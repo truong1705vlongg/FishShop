@@ -27,6 +27,14 @@ CHAY TREN XAMPP
 6. Neu Apache bao thieu curl hoac CA, sua php.ini va Stop/Start Apache.
    Chuyen sang cau hinh PHP khong tu sua loi extension/chung chi cua XAMPP.
 
+DANG NHAP GOOGLE
+----------------
+- Firebase SDK 13.1.0 nam trong assets/vendor/firebase/13.1.0, khong tai SDK
+  tu CDN khi mo trang. Chep ca thu muc nay khi cap nhat sang may khac.
+- Sau khi cap nhat, bam Ctrl+F5 tai trang dang nhap de bo cache code cu.
+- Nut Google chi bat khi SDK san sang; qua 15 giay se bao loi va cho tai lai.
+- Dang nhap van can Internet de mo Google va xac minh tai khoan Firebase.
+
 KIEM TRA
 --------
 C:\xampp\php\php.exe C:\xampp\htdocs\FishShop\database\check_setup.php
