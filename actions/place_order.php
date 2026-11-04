@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/payos.php';
 require_once __DIR__ . '/../includes/location.php';
 require_once __DIR__ . '/../includes/vouchers.php';
+require_once __DIR__ . '/../includes/rewards.php';
 $user = requireLogin();
 requirePost('checkout.php');
 
@@ -21,6 +22,7 @@ try {
 $pdo = db();
 try {
     $hasVoucherColumns = voucher_schema_ready($pdo);
+    reward_schema($pdo);
     $hasLocationColumns = shipping_location_schema_ready($pdo);
     if ($shippingLocation !== null && !$hasLocationColumns) {
         respond(false, 'Chưa lưu được điểm giao hàng lúc này. Vui lòng bỏ ghim và nhập đầy đủ địa chỉ để đặt hàng.', 'checkout.php');
@@ -58,9 +60,47 @@ try {
     }
 
     $subtotal = (int)$total;
+    $prizeRewardId = (int)($_POST['prize_reward_id'] ?? 0);
+    $prizeProductId = (int)($_POST['prize_product_id'] ?? 0);
+    $prizeDiscount = 0;
+    $prizeCouponUnits = 0;
+    $prizeUnitDiscount = 0;
+    $prizeCouponIds = [];
+    if ($prizeRewardId > 0 && $prizeProductId > 0) {
+        $couponSt = $pdo->prepare("SELECT id FROM prize_rewards WHERE user_id=? AND reward_type='coupon' AND discount_percent=5 AND status='available' ORDER BY id FOR UPDATE");
+        $couponSt->execute([(int)$user['id']]);
+        $availableCouponIds = array_map('intval', $couponSt->fetchAll(PDO::FETCH_COLUMN));
+        if (!in_array($prizeRewardId, $availableCouponIds, true)) throw new DomainException('Phiếu thưởng đã được sử dụng hoặc không hợp lệ.');
+        foreach ($lines as $line) {
+            if ($line['id'] !== $prizeProductId) continue;
+            $couponQuote = prize_coupon_line_quote((int)$line['price'], (int)$line['qty'], count($availableCouponIds));
+            $prizeCouponUnits = $couponQuote['units'];
+            $prizeUnitDiscount = $couponQuote['unit_discount'];
+            $prizeDiscount = $couponQuote['discount'];
+            break;
+        }
+        if ($prizeCouponUnits < 1 || $prizeUnitDiscount < 1) throw new DomainException('Hãy giữ sản phẩm đã chọn trong giỏ để sử dụng phiếu thưởng.');
+        $prizeCouponIds = [$prizeRewardId];
+        foreach ($availableCouponIds as $couponId) {
+            if ($couponId === $prizeRewardId || count($prizeCouponIds) >= $prizeCouponUnits) continue;
+            $prizeCouponIds[] = $couponId;
+        }
+    }
+    $fishRewardId = (int)($_POST['fish_reward_id'] ?? 0);
+    $fishProductId = (int)($_POST['fish_product_id'] ?? 0);
+    $fishDiscount = 0;
+    if ($prizeDiscount === 0 && $fishRewardId > 0 && $fishProductId > 0) {
+        $fishSt = $pdo->prepare("SELECT id FROM prize_rewards WHERE id=? AND user_id=? AND reward_type='fish' AND status='available' AND product_id=? FOR UPDATE");
+        $fishSt->execute([$fishRewardId, (int)$user['id'], $fishProductId]);
+        if (!$fishSt->fetchColumn()) throw new DomainException('Phần thưởng cá đã được sử dụng hoặc không hợp lệ.');
+        foreach ($lines as $line) {
+            if ($line['id'] === $fishProductId) { $fishDiscount = (int)$line['price']; break; }
+        }
+        if ($fishDiscount < 1) throw new DomainException('Hãy giữ cá thưởng trong giỏ để hoàn tất giao hàng.');
+    }
     $selectedCode = isset($_SESSION['checkout_voucher']) && is_string($_SESSION['checkout_voucher']) ? $_SESSION['checkout_voucher'] : '';
     $voucher = voucher_quote($pdo, $selectedCode, (int)$user['id'], $subtotal, true);
-    $total = $voucher['total'];
+    $total = max(1, $voucher['total'] - $prizeDiscount - $fishDiscount);
     if ($paymentMethod === 'payos' && ($total < 2000 || $total > 500000000)) {
         throw new DomainException('Chuyển khoản QR áp dụng cho số tiền từ 2.000 đ đến 500.000.000 đ. Vui lòng chọn tiền mặt hoặc thay đổi giỏ hàng/mã giảm giá.');
     }
@@ -75,7 +115,7 @@ try {
     if ($hasVoucherColumns) {
         $orderSql .= ', subtotal, discount_amount, voucher_code';
         $orderArgs[] = $subtotal;
-        $orderArgs[] = $voucher['discount'];
+        $orderArgs[] = $voucher['discount'] + $prizeDiscount + $fishDiscount;
         $orderArgs[] = $voucher['code'] !== '' ? $voucher['code'] : null;
     }
     $orderSql .= ") VALUES (?,?,?,?, 'pending', 'unpaid', ?" . ($hasLocationColumns ? ',?,?' : '') . ($hasVoucherColumns ? ',?,?,?' : '') . ')';
@@ -86,17 +126,35 @@ try {
         $pdo->prepare('INSERT INTO voucher_usages (voucher_id, user_id, order_id, discount_amount) VALUES (?,?,?,?)')
             ->execute([$voucher['voucher_id'], (int)$user['id'], $orderId, $voucher['discount']]);
     }
+    if ($prizeCouponIds) {
+        $markCoupon = $pdo->prepare("UPDATE prize_rewards SET status='used',used_at=NOW() WHERE id=? AND user_id=? AND status='available'");
+        foreach ($prizeCouponIds as $couponId) $markCoupon->execute([$couponId, (int)$user['id']]);
+    }
+    if ($fishDiscount > 0) {
+        $pdo->prepare("UPDATE prize_rewards SET status='used',used_at=NOW() WHERE id=? AND user_id=? AND status='available'")->execute([$fishRewardId, (int)$user['id']]);
+    }
 
     $ins = $pdo->prepare('INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?,?,?,?)');
     $dec = $pdo->prepare('UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?');
     foreach ($lines as $l) {
-        $ins->execute([$orderId, $l['id'], $l['qty'], $l['price']]);   // lưu giá tại thời điểm mua
+        $remainingQty = (int)$l['qty'];
+        $unitPrice = (int)$l['price'];
+        if ($fishDiscount > 0 && $l['id'] === $fishProductId) {
+            $ins->execute([$orderId, $l['id'], 1, 0]);
+            $remainingQty--;
+        }
+        if ($prizeCouponUnits > 0 && $l['id'] === $prizeProductId) {
+            if ($remainingQty < $prizeCouponUnits) throw new DomainException('Số lượng sản phẩm trong giỏ đã thay đổi. Vui lòng tải lại trang thanh toán.');
+            $ins->execute([$orderId, $l['id'], $prizeCouponUnits, max(0, $unitPrice - $prizeUnitDiscount)]);
+            $remainingQty -= $prizeCouponUnits;
+        }
+        if ($remainingQty > 0) $ins->execute([$orderId, $l['id'], $remainingQty, $unitPrice]);
         $dec->execute([$l['qty'], $l['id'], $l['qty']]);
         if ($dec->rowCount() !== 1) throw new RuntimeException('Tồn kho không đủ');
     }
     $pdo->prepare('DELETE FROM cart_items WHERE cart_id = ?')->execute([$cartId]);   // chỉ xóa giỏ sau khi đơn đã tạo
     $pdo->commit();
-    unset($_SESSION['checkout_voucher'], $_SESSION['checkout_draft']);
+    unset($_SESSION['checkout_voucher'], $_SESSION['checkout_draft'], $_SESSION['prize_coupon_reward'], $_SESSION['prize_coupon_product'], $_SESSION['prize_fish_reward'], $_SESSION['prize_fish_product']);
 } catch (DomainException $ex) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     respond(false, $ex->getMessage(), 'checkout.php');

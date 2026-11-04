@@ -34,6 +34,9 @@ $currentPage = basename($_SERVER['SCRIPT_NAME']);
       <a class="<?= $currentPage === 'index.php' ? 'on' : '' ?>" href="<?= url('index.php') ?>">Trang chủ</a>
       <a href="<?= url('index.php#san-pham') ?>">Danh sách sản phẩm</a>
       <a class="<?= $currentPage === 'purchase_history.php' ? 'on' : '' ?>" href="<?= url('purchase_history.php') ?>">Đơn của tôi</a>
+      <a class="<?= $currentPage === 'wheel.php' ? 'on' : '' ?>" href="<?= url('wheel.php') ?>">Vòng quay</a>
+      <a class="<?= $currentPage === 'rewards.php' ? 'on' : '' ?>" href="<?= url('rewards.php') ?>">Kho quà</a>
+      <?php if ($u): ?><a class="<?= $currentPage === 'wallet.php' ? 'on' : '' ?>" href="<?= url('wallet.php') ?>">Nạp ví</a><?php endif; ?>
       <a class="<?= $currentPage === 'profile.php' ? 'on' : '' ?>" href="<?= url('profile.php') ?>">Tài khoản</a>
       <a href="#ho-tro">Hỗ trợ</a>
     </nav>

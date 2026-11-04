@@ -28,6 +28,7 @@ $pageTitle = $pageTitle ?? 'Quản trị';
       <a href="<?= url('admin/customers.php') ?>" class="<?= in_array(basename($_SERVER['SCRIPT_NAME']), ['customers.php', 'customer_detail.php'], true) ? 'active' : '' ?>">Khách hàng</a>
       <a href="<?= url('admin/orders.php') ?>" class="<?= basename($_SERVER['SCRIPT_NAME']) === 'orders.php' ? 'active' : '' ?>">Đơn hàng</a>
       <a href="<?= BASE_URL ?>admin/vouchers.php" class="<?= basename($_SERVER['SCRIPT_NAME']) === 'vouchers.php' ? 'active' : '' ?>">Mã giảm giá</a>
+      <a href="<?= url('admin/wallet_deposits.php') ?>" class="<?= basename($_SERVER['SCRIPT_NAME']) === 'wallet_deposits.php' ? 'active' : '' ?>">Nạp ví</a>
     </nav>
     <div class="admin-side-bottom">
       <form action="<?= url('admin/logout.php') ?>" method="post"><?= csrf_field() ?><button type="submit">Đăng xuất</button></form>

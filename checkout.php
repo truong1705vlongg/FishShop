@@ -2,6 +2,7 @@
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/maps.php';
 require_once __DIR__ . '/includes/vouchers.php';
+require_once __DIR__ . '/includes/rewards.php';
 $user  = requireLogin();
 $lines = cart_lines((int)$user['id']);
 if (!$lines) { flash('error', 'Giỏ hàng đang trống.'); redirect('cart.php'); }
@@ -16,6 +17,15 @@ foreach ($lines as $l) {
 }
 
 $subtotal = (int)$total;
+$rewardQuote = prize_cart_quote(db(), (int)$user['id'], $lines, $_SESSION);
+$prizeDiscount = $rewardQuote['coupon_discount'];
+$prizeCouponUnits = $rewardQuote['coupon_units'];
+$prizeProductId = $rewardQuote['coupon_product_id'];
+$prizeRewardId = $rewardQuote['coupon_reward_id'];
+$fishDiscount = $rewardQuote['fish_discount'];
+$fishRewardId = $rewardQuote['fish_reward_id'];
+$fishProductId = $rewardQuote['fish_product_id'];
+if (!$prizeRewardId) unset($_SESSION['prize_coupon_reward'], $_SESSION['prize_coupon_product']);
 $draft = ['phone' => (string)$user['phone'], 'shipping_address' => (string)$user['address'],
     'shipping_latitude' => '', 'shipping_longitude' => '', 'payment_method' => 'cash'];
 if (is_array($_SESSION['checkout_draft'] ?? null)) {
@@ -42,10 +52,11 @@ $selectedCode = is_string($_SESSION['checkout_voucher'] ?? null) ? $_SESSION['ch
 $voucherReady = voucher_schema_ready(db());
 $voucherError = '';
 $discount = 0;
+$total = max(1, $subtotal - $prizeDiscount - $fishDiscount);
 try {
     $quote = voucher_quote(db(), $selectedCode, (int)$user['id'], $subtotal);
     $discount = $quote['discount'];
-    $total = $quote['total'];
+    $total = max(1, $quote['total'] - $prizeDiscount - $fishDiscount);
 } catch (DomainException $ex) {
     $voucherError = $ex->getMessage();
 }
@@ -104,6 +115,7 @@ include __DIR__ . '/includes/header.php';
         </div>
         <?php if (!$transferAllowed): ?><p class="hint">Chuyển khoản áp dụng cho số tiền từ 2.000 đ đến 500.000.000 đ. Bạn có thể chọn tiền mặt cho đơn này.</p><?php endif; ?>
       </fieldset>
+      <input type="hidden" name="prize_reward_id" value="<?= $prizeRewardId ?>"><input type="hidden" name="prize_product_id" value="<?= $prizeProductId ?>"><input type="hidden" name="fish_reward_id" value="<?= $fishRewardId ?>"><input type="hidden" name="fish_product_id" value="<?= $fishProductId ?>">
       <button class="btn" type="submit" <?= $voucherError !== '' ? 'disabled' : '' ?>>Đặt hàng</button>
       <a class="btn ghost" href="<?= url('cart.php') ?>">Quay lại giỏ hàng</a>
     </form>
@@ -128,6 +140,8 @@ include __DIR__ . '/includes/header.php';
     </div>
     <div class="sum"><span>Tạm tính</span><span><?= money($subtotal) ?></span></div>
     <?php if ($discount > 0): ?><div class="sum"><span>Giảm giá</span><span class="voucher-discount">−<?= money($discount) ?></span></div><?php endif; ?>
+    <?php if ($prizeDiscount > 0): ?><div class="sum"><span>Phiếu vòng quay giảm 5% (<?= $prizeCouponUnits ?> sản phẩm)</span><span class="voucher-discount">−<?= money($prizeDiscount) ?></span></div><?php endif; ?>
+    <?php if ($fishDiscount > 0): ?><div class="sum"><span>Cá thưởng</span><span class="voucher-discount">−<?= money($fishDiscount) ?></span></div><?php endif; ?>
     <div class="sum t"><span>Tổng cộng</span><span><?= money($total) ?></span></div>
     <p class="hint">Tổng tiền cuối cùng do máy chủ tính lại từ giá hiện tại khi bạn đặt hàng.</p>
   </aside>
