@@ -26,6 +26,19 @@
     menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
 
+  var productMenu = document.querySelector('[data-product-menu]');
+  if (productMenu) {
+    document.addEventListener('click', function (event) {
+      if (!productMenu.contains(event.target)) productMenu.open = false;
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && productMenu.open) {
+        productMenu.open = false;
+        productMenu.querySelector('summary').focus();
+      }
+    });
+  }
+
   // ----- Thêm vào giỏ bằng fetch (không tải lại trang) -----
   document.querySelectorAll('form.js-add-cart').forEach(function (form) {
     form.addEventListener('submit', function (ev) {

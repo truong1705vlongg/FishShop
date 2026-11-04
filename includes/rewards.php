@@ -19,20 +19,32 @@ function reward_schema(PDO $pdo): void {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     $pdo->exec("CREATE TABLE IF NOT EXISTS wallet_deposits (
         id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, user_id INT UNSIGNED NOT NULL,
-        amount BIGINT UNSIGNED NOT NULL, reference_mode ENUM('with_code','no_code') NOT NULL DEFAULT 'with_code',
+        amount BIGINT UNSIGNED NOT NULL, reference_mode ENUM('with_code','no_code') NOT NULL DEFAULT 'no_code',
         sender_name VARCHAR(100) NOT NULL DEFAULT '', status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+        payos_payment_link_id VARCHAR(80) NULL, payos_checkout_url VARCHAR(500) NULL, paid_at DATETIME NULL,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, reviewed_at DATETIME NULL, reviewed_by INT UNSIGNED NULL,
         INDEX(status,created_at), INDEX(user_id,created_at),
         CONSTRAINT fk_wallet_deposit_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
         CONSTRAINT fk_wallet_deposit_reviewer FOREIGN KEY(reviewed_by) REFERENCES users(id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-    $walletColumns = $pdo->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='wallet_deposits' AND COLUMN_NAME IN ('reference_mode','sender_name')")->fetchAll(PDO::FETCH_COLUMN);
+    $walletColumns = $pdo->query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='wallet_deposits'")->fetchAll(PDO::FETCH_COLUMN);
     if (!in_array('reference_mode', $walletColumns, true)) {
         $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN reference_mode ENUM('with_code','no_code') NOT NULL DEFAULT 'with_code' AFTER amount");
     }
     if (!in_array('sender_name', $walletColumns, true)) {
         $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN sender_name VARCHAR(100) NOT NULL DEFAULT '' AFTER reference_mode");
     }
+    if (!in_array('payos_payment_link_id', $walletColumns, true)) {
+        $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN payos_payment_link_id VARCHAR(80) NULL AFTER status");
+    }
+    if (!in_array('payos_checkout_url', $walletColumns, true)) {
+        $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN payos_checkout_url VARCHAR(500) NULL AFTER payos_payment_link_id");
+    }
+    if (!in_array('paid_at', $walletColumns, true)) {
+        $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN paid_at DATETIME NULL AFTER payos_checkout_url");
+    }
+    $hasPayosLinkIndex = (int)$pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='wallet_deposits' AND INDEX_NAME='uq_wallet_deposit_payos_link'")->fetchColumn();
+    if (!$hasPayosLinkIndex) $pdo->exec("ALTER TABLE wallet_deposits ADD UNIQUE KEY uq_wallet_deposit_payos_link (payos_payment_link_id)");
 }
 
 function prize_wallet(PDO $pdo, int $userId): array {

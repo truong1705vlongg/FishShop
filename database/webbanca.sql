@@ -620,9 +620,13 @@ CREATE TABLE `wallet_deposits` (
   `reference_mode` enum('with_code','no_code') NOT NULL DEFAULT 'with_code',
   `sender_name` varchar(100) NOT NULL DEFAULT '',
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `payos_payment_link_id` varchar(80) DEFAULT NULL,
+  `payos_checkout_url` varchar(500) DEFAULT NULL,
+  `paid_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `reviewed_at` datetime DEFAULT NULL,
-  `reviewed_by` int(10) UNSIGNED DEFAULT NULL
+  `reviewed_by` int(10) UNSIGNED DEFAULT NULL,
+  UNIQUE KEY `uq_wallet_deposit_payos_link` (`payos_payment_link_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

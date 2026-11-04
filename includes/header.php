@@ -15,6 +15,9 @@ $minimal   = $minimal ?? false;
 <link rel="stylesheet" href="<?= url('assets/css/maps.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/maps.css') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/vouchers.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/vouchers.css') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/slideshow.css') ?>">
+<?php foreach ($pageStyles ?? [] as $stylesheet): ?>
+<link rel="stylesheet" href="<?= e(url($stylesheet)) ?>?v=<?= filemtime(__DIR__ . '/../' . $stylesheet) ?>">
+<?php endforeach; ?>
 </head>
 <body class="<?= e($bodyClass) ?>" data-base="<?= e(BASE_URL) ?>" data-csrf="<?= e(csrf_token()) ?>">
 <?php include __DIR__ . '/navbar.php'; ?>

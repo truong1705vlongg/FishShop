@@ -62,6 +62,130 @@ function payos_create_order_link(int $orderId): string {
         ->execute([$data['paymentLinkId'], $data['checkoutUrl'], $orderId]);
     return $data['checkoutUrl'];
 }
+
+function payos_create_wallet_deposit_link(int $depositId, int $userId): string {
+    $pdo = db();
+    $st = $pdo->prepare('SELECT d.*,u.fullname,u.email FROM wallet_deposits d JOIN users u ON u.id=d.user_id WHERE d.id=? AND d.user_id=?');
+    $st->execute([$depositId, $userId]);
+    $deposit = $st->fetch();
+    if (!$deposit || $deposit['status'] !== 'pending') throw new DomainException('Yêu cầu nạp ví không còn chờ thanh toán.');
+    if (is_string($deposit['payos_checkout_url'] ?? null) && $deposit['payos_checkout_url'] !== '') return $deposit['payos_checkout_url'];
+    $config = payos_config();
+    if (!payos_ready() || !preg_match('#^https?://#i', $config['base_url'])) throw new RuntimeException('PayOS hoặc URL cửa hàng chưa được cấu hình.');
+    $amount = (int)$deposit['amount'];
+    if ($amount < 2000 || $amount > 500000000) throw new DomainException('Số tiền nạp không nằm trong giới hạn PayOS.');
+    $returnUrl = $config['base_url'] . '/wallet.php?deposit=' . $depositId;
+    $description = 'WV' . $depositId;
+    $orderCode = random_int(100000000, 999999999);
+    $signatureData = ['amount'=>$amount, 'cancelUrl'=>$returnUrl, 'description'=>$description,
+        'orderCode'=>$orderCode, 'returnUrl'=>$returnUrl];
+    ksort($signatureData);
+    $signing = implode('&', array_map(static fn($key,$value) => $key . '=' . $value, array_keys($signatureData), array_values($signatureData)));
+    $payload = $signatureData + ['signature'=>hash_hmac('sha256',$signing,$config['checksum_key']),
+        'buyerName'=>mb_substr((string)$deposit['fullname'],0,100),
+        'buyerEmail'=>($deposit['email'] ?: null),
+        'items'=>[['name'=>'Nạp ví Fish Shop #' . $depositId,'quantity'=>1,'price'=>$amount]]];
+    $result = payos_http('POST','/v2/payment-requests',$payload);
+    $data = $result['data'] ?? [];
+    if (!is_string($data['checkoutUrl'] ?? null) || !filter_var($data['checkoutUrl'],FILTER_VALIDATE_URL)
+        || !str_starts_with($data['checkoutUrl'],'https://pay.payos.vn/')
+        || !is_string($data['paymentLinkId'] ?? null) || $data['paymentLinkId'] === '') {
+        throw new RuntimeException('PayOS trả về thông tin thanh toán không hợp lệ.');
+    }
+    $save = $pdo->prepare("UPDATE wallet_deposits SET payos_payment_link_id=?,payos_checkout_url=? WHERE id=? AND user_id=? AND status='pending' AND payos_checkout_url IS NULL");
+    $save->execute([$data['paymentLinkId'],$data['checkoutUrl'],$depositId,$userId]);
+    if ($save->rowCount() !== 1) {
+        $st->execute([$depositId,$userId]);
+        $current = $st->fetch();
+        if (!$current || $current['status'] !== 'pending') throw new DomainException('Trạng thái yêu cầu nạp ví đã thay đổi.');
+        if (!empty($current['payos_checkout_url'])) return $current['payos_checkout_url'];
+        throw new RuntimeException('Không lưu được mã thanh toán PayOS.');
+    }
+    return $data['checkoutUrl'];
+}
+
+// A confirmed deposit is credited under the deposit row lock. Replayed webhooks
+// and concurrent browser polls can therefore never add the same amount twice.
+function payos_confirm_wallet_deposit(string $paymentLinkId, int $amount): ?bool {
+    if ($paymentLinkId === '' || $amount < 1) return null;
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $st = $pdo->prepare('SELECT id,user_id,amount,status FROM wallet_deposits WHERE payos_payment_link_id=? FOR UPDATE');
+        $st->execute([$paymentLinkId]);
+        $deposit = $st->fetch();
+        if (!$deposit) { $pdo->commit(); return null; }
+        if ((int)$deposit['amount'] !== $amount || $deposit['status'] === 'rejected') {
+            $pdo->commit(); return false;
+        }
+        if ($deposit['status'] === 'approved') { $pdo->commit(); return true; }
+        $pdo->prepare('INSERT INTO prize_wallets(user_id,balance) VALUES(?,?) ON DUPLICATE KEY UPDATE balance=balance+VALUES(balance)')
+            ->execute([(int)$deposit['user_id'],(int)$deposit['amount']]);
+        $markPaid = $pdo->prepare("UPDATE wallet_deposits SET status='approved',paid_at=UTC_TIMESTAMP(),reviewed_at=UTC_TIMESTAMP(),reviewed_by=NULL WHERE id=? AND status='pending'");
+        $markPaid->execute([(int)$deposit['id']]);
+        if ($markPaid->rowCount() !== 1) throw new RuntimeException('Wallet deposit status changed while confirming payment.');
+        $pdo->commit();
+        return true;
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+}
+
+function payos_sync_wallet_deposit_status(int $depositId, int $userId): string {
+    $pdo = db();
+    $st = $pdo->prepare('SELECT status,amount,payos_payment_link_id FROM wallet_deposits WHERE id=? AND user_id=?');
+    $st->execute([$depositId,$userId]);
+    $deposit = $st->fetch();
+    if (!$deposit || $deposit['status'] !== 'pending' || empty($deposit['payos_payment_link_id']) || !payos_ready()) {
+        return (string)($deposit['status'] ?? 'missing');
+    }
+    $lastCheck = (int)($_SESSION['payos_wallet_check'][$depositId] ?? 0);
+    if (time() - $lastCheck < 5) return 'pending';
+    $_SESSION['payos_wallet_check'][$depositId] = time();
+    try {
+        $linkId = (string)$deposit['payos_payment_link_id'];
+        $result = payos_http('GET','/v2/payment-requests/' . rawurlencode($linkId));
+        $data = $result['data'] ?? [];
+        if (($data['id'] ?? '') === $linkId && ($data['status'] ?? '') === 'PAID'
+            && (int)($data['amount'] ?? 0) === (int)$deposit['amount']
+            && (int)($data['amountPaid'] ?? 0) === (int)$deposit['amount']) {
+            $confirmed = payos_confirm_wallet_deposit($linkId,(int)$deposit['amount']);
+            if ($confirmed === true) return 'approved';
+        }
+    } catch (Throwable $error) {
+        error_log('FishShop PayOS wallet status check failed (' . get_class($error) . ').');
+    }
+    $current = $pdo->prepare('SELECT status FROM wallet_deposits WHERE id=? AND user_id=?');
+    $current->execute([$depositId,$userId]);
+    return (string)($current->fetchColumn() ?: 'pending');
+}
+
+function payos_cancel_wallet_deposit_link(int $depositId, int $userId): void {
+    $pdo = db();
+    $st = $pdo->prepare("SELECT payos_payment_link_id,status FROM wallet_deposits WHERE id=? AND user_id=?");
+    $st->execute([$depositId,$userId]);
+    $deposit = $st->fetch();
+    if (!$deposit || $deposit['status'] !== 'pending') throw new DomainException('Yêu cầu nạp ví không còn chờ thanh toán.');
+    $linkId = (string)($deposit['payos_payment_link_id'] ?? '');
+    if ($linkId === '') return;
+    $path = '/v2/payment-requests/' . rawurlencode($linkId);
+    try {
+        $result = payos_http('POST',$path . '/cancel',['cancellationReason'=>'Customer requested a new wallet QR']);
+        if (($result['data']['status'] ?? '') !== 'CANCELLED') throw new RuntimeException('PayOS did not confirm cancellation.');
+    } catch (Throwable $cancelError) {
+        $result = payos_http('GET',$path);
+        if (($result['data']['status'] ?? '') === 'PAID') {
+            payos_confirm_wallet_deposit($linkId,(int)($result['data']['amount'] ?? 0));
+            throw new DomainException('Khoản nạp đã được thanh toán, số dư đang được cập nhật.');
+        }
+        if (($result['data']['status'] ?? '') !== 'CANCELLED') throw $cancelError;
+    }
+    $clear = $pdo->prepare("UPDATE wallet_deposits SET payos_payment_link_id=NULL,payos_checkout_url=NULL WHERE id=? AND user_id=? AND status='pending' AND payos_payment_link_id=?");
+    $clear->execute([$depositId,$userId,$linkId]);
+    if ($clear->rowCount() !== 1) throw new DomainException('Trạng thái khoản nạp đã thay đổi. Hãy tải lại trang.');
+}
+
 function payos_cancel_order_link(int $orderId): void {
     $pdo = db();
     $st = $pdo->prepare("SELECT payos_payment_link_id, payment_status, status FROM orders WHERE id = ? AND payment_method = 'payos'");

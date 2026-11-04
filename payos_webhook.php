@@ -12,8 +12,12 @@ if (!is_array($payload) || !is_array($payload['data'] ?? null)
 $data = $payload['data'];
 if (($payload['success'] ?? false) === true && ($payload['code'] ?? '') === '00'
     && ($data['code'] ?? '') === '00' && (int)($data['orderCode'] ?? 0) > 0) {
+    $pdo = db();
     try {
-        $pdo = db(); $pdo->beginTransaction();
+        $depositResult = payos_confirm_wallet_deposit((string)($data['paymentLinkId'] ?? ''), (int)($data['amount'] ?? 0));
+        if ($depositResult === true) payos_webhook_reply(200, ['ok' => true]);
+        if ($depositResult === false) payos_webhook_reply(400, ['ok' => false]);
+        $pdo->beginTransaction();
         $paymentLinkId = (string)($data['paymentLinkId'] ?? '');
         if ($paymentLinkId !== '') {
             $st = $pdo->prepare("SELECT id, total, status, payment_status FROM orders WHERE payos_payment_link_id = ? AND payment_method = 'payos' FOR UPDATE");

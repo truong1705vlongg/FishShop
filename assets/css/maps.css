@@ -17,12 +17,12 @@
 .map-error[hidden], .map-selected-link[hidden] { display:none; }
 .map-selected-link { display:inline-block; margin-top:6px; color:var(--teal,#56ddc3); font-size:12px; text-decoration:underline; }
 .store-location { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); align-items:center; gap:32px; margin-bottom:36px; padding-top:6px; padding-bottom:30px; border-bottom:1px solid var(--line,#2c4354); }
-.map-eyebrow { margin:0 0 10px; color:var(--teal,#56ddc3); font-size:10px; font-weight:700; letter-spacing:1.6px; }
-.store-location h2 { margin:0 0 14px; color:var(--ink,#e3edf5); font-size:25px; }
-.store-location-name { margin:0 0 6px; color:var(--ink,#e3edf5); font-size:14px; font-weight:600; line-height:1.6; }
-.store-location-address { margin:0 0 20px; color:var(--mute,#a4b7c8); font-size:13px; line-height:1.8; }
-.home-footer .map-eyebrow { margin:0 0 10px; color:var(--teal,#56ddc3); font-size:10px; }
-.home-footer .store-location-name { margin:0 0 6px; color:var(--ink,#e3edf5); font-size:14px; }
+.map-eyebrow { margin:0 0 10px; color:var(--teal,#56ddc3); font-size:11px; font-weight:700; letter-spacing:1.6px; }
+.store-location h2 { margin:0 0 14px; color:var(--ink,#e3edf5); font-size:26px; }
+.store-location-name { margin:0 0 6px; color:var(--ink,#e3edf5); font-size:15px; font-weight:600; line-height:1.6; }
+.store-location-address { margin:0 0 20px; color:var(--mute,#a4b7c8); font-size:15px; line-height:1.8; }
+.home-footer .map-eyebrow { margin:0 0 10px; color:var(--teal,#56ddc3); font-size:11px; }
+.home-footer .store-location-name { margin:0 0 6px; color:var(--ink,#e3edf5); font-size:15px; }
 .home-footer .store-location-address { margin:0 0 20px; }
 .store-map { height:240px; }
 .fishshop-map .leaflet-control-attribution { max-width:calc(100% - 12px); background:rgba(255,255,255,.94); color:#223c4a; font-size:10px; line-height:1.5; }
