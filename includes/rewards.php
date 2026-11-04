@@ -23,6 +23,8 @@ function reward_schema(PDO $pdo): void {
         request_type ENUM('payos','direct') NOT NULL DEFAULT 'direct',
         sender_name VARCHAR(100) NOT NULL DEFAULT '', status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
         payos_payment_link_id VARCHAR(80) NULL, payos_checkout_url VARCHAR(500) NULL, paid_at DATETIME NULL,
+        payos_bank_bin VARCHAR(16) NULL, payos_account_number VARCHAR(40) NULL,
+        payos_account_name VARCHAR(150) NULL, payos_transfer_description VARCHAR(100) NULL, payos_qr_code TEXT NULL,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, reviewed_at DATETIME NULL, reviewed_by INT UNSIGNED NULL,
         INDEX(status,created_at), INDEX(user_id,created_at),
         CONSTRAINT fk_wallet_deposit_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -43,6 +45,21 @@ function reward_schema(PDO $pdo): void {
     }
     if (!in_array('paid_at', $walletColumns, true)) {
         $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN paid_at DATETIME NULL AFTER payos_checkout_url");
+    }
+    if (!in_array('payos_bank_bin', $walletColumns, true)) {
+        $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN payos_bank_bin VARCHAR(16) NULL AFTER paid_at");
+    }
+    if (!in_array('payos_account_number', $walletColumns, true)) {
+        $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN payos_account_number VARCHAR(40) NULL AFTER payos_bank_bin");
+    }
+    if (!in_array('payos_account_name', $walletColumns, true)) {
+        $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN payos_account_name VARCHAR(150) NULL AFTER payos_account_number");
+    }
+    if (!in_array('payos_transfer_description', $walletColumns, true)) {
+        $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN payos_transfer_description VARCHAR(100) NULL AFTER payos_account_name");
+    }
+    if (!in_array('payos_qr_code', $walletColumns, true)) {
+        $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN payos_qr_code TEXT NULL AFTER payos_transfer_description");
     }
     if (!in_array('request_type', $walletColumns, true)) {
         $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN request_type ENUM('payos','direct') NOT NULL DEFAULT 'direct' AFTER reference_mode");

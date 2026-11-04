@@ -98,7 +98,7 @@ include __DIR__ . '/_header.php';
         <small>Chỉ chọn “Đã thanh toán” khi tiền đã về tài khoản.</small></div>
       <button class="btn block" type="submit">Lưu thay đổi</button>
     </form>
-    <a class="btn ghost block" style="margin-top:10px" href="<?= BASE_URL ?>admin/export_order_word.php?id=<?= (int)$order['id'] ?>">Xuất đơn hàng sang Word</a>
+    <a class="btn ghost block" style="margin-top:10px" href="<?= BASE_URL ?>admin/export_order_pdf.php?id=<?= (int)$order['id'] ?>">Xuất đơn hàng sang PDF</a>
     <a class="btn ghost block" style="margin-top:10px" href="<?= url('admin/orders.php') ?>">Quay lại danh sách</a>
   </aside>
 </div>
@@ -126,7 +126,7 @@ include __DIR__ . '/_header.php';
       <td class="num"><?= money($o['total']) ?></td>
       <td><span class="tag <?= e($o['status']) ?>"><?= e(ORDER_STATUS[$o['status']]) ?></span></td>
       <td><span class="tag <?= e($o['payment_status']) ?>"><?= e(PAYMENT_STATUS[$o['payment_status']]) ?></span></td>
-      <td style="white-space:nowrap"><a class="btn ghost sm" href="<?= url('admin/orders.php?id=' . (int)$o['id']) ?>">Chi tiết</a> <a class="btn ghost sm" href="<?= BASE_URL ?>admin/export_order_word.php?id=<?= (int)$o['id'] ?>">Word</a></td>
+      <td style="white-space:nowrap"><a class="btn ghost sm" href="<?= url('admin/orders.php?id=' . (int)$o['id']) ?>">Chi tiết</a> <a class="btn ghost sm" href="<?= BASE_URL ?>admin/export_order_pdf.php?id=<?= (int)$o['id'] ?>">PDF</a></td>
     </tr>
   <?php endforeach; ?>
   </tbody>

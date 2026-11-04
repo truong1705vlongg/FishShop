@@ -2,6 +2,38 @@
 require_once __DIR__ . '/auth.php';
 
 function payos_config(): array { return require __DIR__ . '/../config/payos.php'; }
+function payos_bank_display_name(string $bin): string {
+    static $banks = [
+        '970416'=>'ACB - Ngân hàng TMCP Á Châu', '970422'=>'MB Bank', '970415'=>'VietinBank',
+        '970436'=>'Vietcombank', '970418'=>'BIDV', '970405'=>'Agribank', '970407'=>'Techcombank',
+        '970432'=>'VPBank', '970403'=>'Sacombank', '970423'=>'TPBank', '970437'=>'HDBank',
+        '970441'=>'VIB', '970443'=>'SHB', '970448'=>'OCB', '970429'=>'SCB', '970426'=>'MSB',
+        '970431'=>'Eximbank',
+    ];
+    $bin = preg_replace('/\D+/', '', $bin) ?? '';
+    return $banks[$bin] ?? ($bin !== '' ? 'Ngân hàng · ' . $bin : 'Ngân hàng');
+}
+function payos_qr_transfer_description(string $qrCode): ?string {
+    $readFields = static function (string $payload): array {
+        $fields = [];
+        for ($offset = 0, $length = strlen($payload); $offset + 4 <= $length;) {
+            $tag = substr($payload, $offset, 2);
+            $size = substr($payload, $offset + 2, 2);
+            if (!ctype_digit($size)) break;
+            $size = (int)$size;
+            $offset += 4;
+            if ($offset + $size > $length) break;
+            $fields[$tag] = substr($payload, $offset, $size);
+            $offset += $size;
+        }
+        return $fields;
+    };
+    $root = $readFields($qrCode);
+    if (!isset($root['62'])) return null;
+    $additional = $readFields($root['62']);
+    $description = trim((string)($additional['08'] ?? ''));
+    return $description !== '' ? $description : null;
+}
 function payos_ready(): bool {
     $c = payos_config();
     return function_exists('curl_init') && $c['client_id'] !== '' && $c['api_key'] !== '' && $c['checksum_key'] !== '';
@@ -92,8 +124,13 @@ function payos_create_wallet_deposit_link(int $depositId, int $userId): string {
         || !is_string($data['paymentLinkId'] ?? null) || $data['paymentLinkId'] === '') {
         throw new RuntimeException('PayOS trả về thông tin thanh toán không hợp lệ.');
     }
-    $save = $pdo->prepare("UPDATE wallet_deposits SET payos_payment_link_id=?,payos_checkout_url=? WHERE id=? AND user_id=? AND status='pending' AND payos_checkout_url IS NULL");
-    $save->execute([$data['paymentLinkId'],$data['checkoutUrl'],$depositId,$userId]);
+    $bankBin = substr(preg_replace('/\D+/', '', (string)($data['bin'] ?? '')) ?? '', 0, 16);
+    $accountNumber = substr(trim((string)($data['accountNumber'] ?? '')), 0, 40);
+    $accountName = substr(trim((string)($data['accountName'] ?? '')), 0, 150);
+    $qrCode = is_string($data['qrCode'] ?? null) ? substr($data['qrCode'], 0, 4096) : null;
+    $transferDescription = substr(trim(payos_qr_transfer_description((string)$qrCode) ?? (string)($data['description'] ?? $description)), 0, 100);
+    $save = $pdo->prepare("UPDATE wallet_deposits SET payos_payment_link_id=?,payos_checkout_url=?,payos_bank_bin=?,payos_account_number=?,payos_account_name=?,payos_transfer_description=?,payos_qr_code=? WHERE id=? AND user_id=? AND status='pending' AND payos_checkout_url IS NULL");
+    $save->execute([$data['paymentLinkId'],$data['checkoutUrl'],$bankBin ?: null,$accountNumber ?: null,$accountName ?: null,$transferDescription ?: null,$qrCode,$depositId,$userId]);
     if ($save->rowCount() !== 1) {
         $st->execute([$depositId,$userId]);
         $current = $st->fetch();
@@ -181,7 +218,7 @@ function payos_cancel_wallet_deposit_link(int $depositId, int $userId): void {
         }
         if (($result['data']['status'] ?? '') !== 'CANCELLED') throw $cancelError;
     }
-    $clear = $pdo->prepare("UPDATE wallet_deposits SET payos_payment_link_id=NULL,payos_checkout_url=NULL WHERE id=? AND user_id=? AND status='pending' AND payos_payment_link_id=?");
+    $clear = $pdo->prepare("UPDATE wallet_deposits SET payos_payment_link_id=NULL,payos_checkout_url=NULL,payos_bank_bin=NULL,payos_account_number=NULL,payos_account_name=NULL,payos_transfer_description=NULL,payos_qr_code=NULL WHERE id=? AND user_id=? AND status='pending' AND payos_payment_link_id=?");
     $clear->execute([$depositId,$userId,$linkId]);
     if ($clear->rowCount() !== 1) throw new DomainException('Trạng thái khoản nạp đã thay đổi. Hãy tải lại trang.');
 }

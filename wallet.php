@@ -48,12 +48,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('wallet.php');
     }
 }$wallet=prize_wallet($pdo,$uid);
-$st=$pdo->prepare('SELECT id,amount,reference_mode,request_type,status,payos_payment_link_id,payos_checkout_url,paid_at,created_at FROM wallet_deposits WHERE user_id=? ORDER BY id DESC LIMIT 20');$st->execute([$uid]);$requests=$st->fetchAll();
+$st=$pdo->prepare('SELECT id,amount,reference_mode,request_type,status,payos_payment_link_id,payos_checkout_url,paid_at,payos_bank_bin,payos_account_number,payos_account_name,payos_transfer_description,payos_qr_code,created_at FROM wallet_deposits WHERE user_id=? ORDER BY id DESC LIMIT 20');$st->execute([$uid]);$requests=$st->fetchAll();
 $selectedId=(int)($_GET['deposit']??0);$selectedDeposit=null;$payosError='';
-if($selectedId>0){$st=$pdo->prepare('SELECT id,amount,reference_mode,request_type,status,payos_payment_link_id,payos_checkout_url,paid_at,created_at FROM wallet_deposits WHERE id=? AND user_id=?');$st->execute([$selectedId,$uid]);$selectedDeposit=$st->fetch()?:null;}
+if($selectedId>0){$st=$pdo->prepare('SELECT id,amount,reference_mode,request_type,status,payos_payment_link_id,payos_checkout_url,paid_at,payos_bank_bin,payos_account_number,payos_account_name,payos_transfer_description,payos_qr_code,created_at FROM wallet_deposits WHERE id=? AND user_id=?');$st->execute([$selectedId,$uid]);$selectedDeposit=$st->fetch()?:null;}
 if($selectedDeposit && $selectedDeposit['request_type']==='payos' && $selectedDeposit['status']==='pending' && empty($selectedDeposit['payos_checkout_url'])){
-    try{$payosUrl=payos_create_wallet_deposit_link($selectedId,$uid);$selectedDeposit['payos_checkout_url']=$payosUrl;$selectedDeposit['payos_payment_link_id']='created';}
+    try{$payosUrl=payos_create_wallet_deposit_link($selectedId,$uid);$st=$pdo->prepare('SELECT id,amount,reference_mode,request_type,status,payos_payment_link_id,payos_checkout_url,paid_at,payos_bank_bin,payos_account_number,payos_account_name,payos_transfer_description,payos_qr_code,created_at FROM wallet_deposits WHERE id=? AND user_id=?');$st->execute([$selectedId,$uid]);$selectedDeposit=$st->fetch()?:$selectedDeposit;$selectedDeposit['payos_checkout_url']=$selectedDeposit['payos_checkout_url']?:$payosUrl;}
     catch(Throwable $error){$payosError='Chưa tạo được mã thanh toán. Hãy thử lại bằng nút bên dưới.';error_log('FishShop PayOS wallet QR retry failed (' . get_class($error) . ').');}
+}
+$walletQrUrl='';
+if($selectedDeposit && !empty($selectedDeposit['payos_qr_code'])){
+    $walletQrUrl='https://api.qrserver.com/v1/create-qr-code/?'.http_build_query([
+        'size'=>'320x320','margin'=>8,'data'=>(string)$selectedDeposit['payos_qr_code'],
+    ],'','&',PHP_QUERY_RFC3986);
 }
 $payosWasCancelled=strtolower((string)($_GET['cancel']??''))==='true'||strtoupper((string)($_GET['status']??''))==='CANCELLED';
 $pageTitle='Nạp tiền ví vòng quay';include __DIR__.'/includes/header.php';
@@ -72,7 +78,16 @@ $pageTitle='Nạp tiền ví vòng quay';include __DIR__.'/includes/header.php';
 <?php if($selectedDeposit): ?>
 <section class="card wallet-qr-card" style="margin-top:20px">
   <h2><?=$selectedDeposit['status']==='approved'?'Nạp ví thành công':($selectedDeposit['request_type']==='direct'?'Yêu cầu cộng tiền trực tiếp':'Thanh toán nạp ví')?></h2>
-  <div class="transfer-details"><div><span>Số tiền nạp</span><strong><?=money($selectedDeposit['amount'])?></strong></div><div><span>Mã yêu cầu</span><strong>#<?= (int)$selectedDeposit['id'] ?></strong></div></div>
+  <div class="transfer-details wallet-transfer-summary">
+    <div><span>Số tiền nạp</span><strong><?=money($selectedDeposit['amount'])?></strong></div>
+    <div><span>Mã yêu cầu</span><strong>#<?= (int)$selectedDeposit['id'] ?></strong></div>
+    <?php if($selectedDeposit['request_type']==='payos'&&!empty($selectedDeposit['payos_account_number'])): ?>
+      <div><span>Ngân hàng nhận</span><strong><?=e(payos_bank_display_name((string)$selectedDeposit['payos_bank_bin']))?></strong></div>
+      <div><span>Chủ tài khoản</span><strong><?=e($selectedDeposit['payos_account_name'])?></strong></div>
+      <div><span>Số tài khoản</span><strong><?=e($selectedDeposit['payos_account_number'])?></strong></div>
+      <div><span>Nội dung chuyển khoản</span><strong><?=e($selectedDeposit['payos_transfer_description']?:'WV'.$selectedDeposit['id'])?></strong></div>
+    <?php endif; ?>
+  </div>
   <?php if($selectedDeposit['status']==='approved'): ?>
     <div class="wallet-payment-success" role="status"><div class="wallet-payment-success-mark" aria-hidden="true">✓</div><h3>Đã nạp tiền vào ví</h3><p><?=$selectedDeposit['request_type']==='direct'?'Quản trị viên đã duyệt yêu cầu. Số dư ví đã được cộng.':'Giao dịch đã được xác nhận. Số dư ví được cập nhật tự động.'?></p><a class="btn" href="<?=url('wallet.php')?>">Xem số dư ngay</a></div>
   <?php elseif($selectedDeposit['status']==='rejected'): ?>
@@ -82,20 +97,21 @@ $pageTitle='Nạp tiền ví vòng quay';include __DIR__.'/includes/header.php';
   <?php elseif($payosWasCancelled): ?>
     <div class="alert warn">Bạn đã đóng hoặc hủy bước thanh toán. Yêu cầu vẫn đang chờ xác nhận.</div>
     <form method="post" action="<?=url('wallet.php')?>" style="margin-top:14px"><?=csrf_field()?><input type="hidden" name="deposit_id" value="<?=(int)$selectedDeposit['id']?>"><input type="hidden" name="regenerate" value="1"><button class="btn" type="submit">Tạo mã QR mới</button></form>
-  <?php elseif(!empty($selectedDeposit['payos_checkout_url'])): ?>
-    <p class="hint" style="margin:0 0 14px">Quét mã bằng ứng dụng ngân hàng hoặc mở trang thanh toán để trả đúng số tiền.</p>
-    <div id="wallet-payos-embed" class="payos-embed" style="height:380px;min-height:380px"></div>
-    <p id="wallet-payos-note" class="payos-embed-note">Đang tải mã QR…</p>
+  <?php elseif(!empty($selectedDeposit['payos_checkout_url'])&&$walletQrUrl!==''): ?>
+    <div id="wallet-qr-only" class="wallet-qr-only"><img id="wallet-qr-image" src="<?=e($walletQrUrl)?>" alt="Mã QR chuyển khoản cho yêu cầu nạp ví #<?= (int)$selectedDeposit['id'] ?>" width="300" height="300" referrerpolicy="no-referrer"></div>
+    <p id="wallet-payos-note" class="payos-embed-note">Quét mã QR bằng ứng dụng ngân hàng để chuyển đúng số tiền và nội dung.</p>
     <div id="wallet-payment-success" class="wallet-payment-success hidden" role="status" aria-live="polite"><div class="wallet-payment-success-mark" aria-hidden="true">✓</div><h3>Thanh toán thành công</h3><p>Giao dịch đã được xác nhận. Tiền đã được cộng vào ví.</p><p class="wallet-countdown">Đang cập nhật số dư sau <strong id="wallet-countdown">3</strong> giây</p><a class="btn" href="<?=url('wallet.php')?>">Xem số dư ngay</a></div>
-    <p id="wallet-payos-external" class="payos-embed-note"><a class="link-btn" href="<?=e($selectedDeposit['payos_checkout_url'])?>" target="_blank" rel="noopener noreferrer">Mở trang thanh toán riêng</a></p>
-    <form id="wallet-payos-regenerate" method="post" action="<?=url('wallet.php')?>" class="hidden" style="margin-top:14px"><?=csrf_field()?><input type="hidden" name="deposit_id" value="<?=(int)$selectedDeposit['id']?>"><input type="hidden" name="regenerate" value="1"><button class="btn block" type="submit">Tạo mã QR mới</button></form>
-    <script src="https://cdn.payos.vn/payos-checkout/v1/stable/payos-initialize.js"></script>
+    <p id="wallet-payos-external" class="payos-embed-note hidden"><a class="link-btn" href="<?=e($selectedDeposit['payos_checkout_url'])?>" target="_blank" rel="noopener noreferrer">Mở trang thanh toán nếu mã QR không tải</a></p>
+    <form id="wallet-payos-regenerate" method="post" action="<?=url('wallet.php')?>" style="margin-top:14px"><?=csrf_field()?><input type="hidden" name="deposit_id" value="<?=(int)$selectedDeposit['id']?>"><input type="hidden" name="regenerate" value="1"><button class="btn ghost" type="submit">Tạo mã QR mới</button></form>
     <script>
     (()=>{const note=document.getElementById('wallet-payos-note'),regenerate=document.getElementById('wallet-payos-regenerate'),statusUrl=<?=json_encode(url('actions/wallet_deposit_status.php?id='.(int)$selectedDeposit['id']),JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>,walletUrl=<?=json_encode(url('wallet.php'),JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>;let checking=false,redirecting=false,attempts=0,stopped=false;
-    const showPaid=()=>{if(redirecting)return;redirecting=true;document.getElementById('wallet-payos-embed').classList.add('hidden');note.classList.add('hidden');regenerate.classList.add('hidden');document.getElementById('wallet-payos-external').classList.add('hidden');document.getElementById('wallet-payment-success').classList.remove('hidden');let seconds=3;const counter=document.getElementById('wallet-countdown');counter.textContent=seconds;const timer=setInterval(()=>{counter.textContent=--seconds;if(seconds<=0){clearInterval(timer);window.location.replace(walletUrl+'?deposit=<?=(int)$selectedDeposit['id']?>');}},1000)};
+    const showPaid=()=>{if(redirecting)return;redirecting=true;document.getElementById('wallet-qr-only').classList.add('hidden');note.classList.add('hidden');regenerate.classList.add('hidden');document.getElementById('wallet-payos-external').classList.add('hidden');document.getElementById('wallet-payment-success').classList.remove('hidden');let seconds=3;const counter=document.getElementById('wallet-countdown');counter.textContent=seconds;const timer=setInterval(()=>{counter.textContent=--seconds;if(seconds<=0){clearInterval(timer);window.location.replace(walletUrl+'?deposit=<?=(int)$selectedDeposit['id']?>');}},1000)};
     const check=async()=>{if(checking||redirecting||stopped)return;checking=true;attempts++;try{const response=await fetch(statusUrl,{headers:{Accept:'application/json'},credentials:'same-origin',cache:'no-store'});const result=await response.json();if(response.ok&&result.ok&&result.status==='approved'){showPaid();return}}catch(error){}finally{checking=false;if(!redirecting&&!stopped){if(attempts<36)setTimeout(check,5000);else{stopped=true;note.textContent='Chưa nhận được xác nhận. Hãy tải lại trang để kiểm tra trạng thái nạp ví.'}}}};
-    if(window.PayOSCheckout){try{const checkout=window.PayOSCheckout.usePayOS({RETURN_URL:<?=json_encode(payos_config()['base_url'].'/wallet.php?deposit='.(int)$selectedDeposit['id'],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>,ELEMENT_ID:'wallet-payos-embed',CHECKOUT_URL:<?=json_encode($selectedDeposit['payos_checkout_url'],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>,embedded:true,onSuccess:()=>{note.textContent='Đang xác minh giao dịch…';check()},onCancel:()=>{if(!redirecting){note.textContent='Bạn đã hủy thanh toán. Có thể tạo mã QR mới.';regenerate.classList.remove('hidden')}},onExit:()=>{if(!redirecting){note.textContent='Bạn đã đóng khung thanh toán. Có thể tạo mã QR mới.';regenerate.classList.remove('hidden')}}});checkout.open()}catch(error){note.textContent='Không tải được khung QR. Dùng liên kết thanh toán bên dưới.'}}else note.textContent='Không tải được khung QR. Dùng liên kết thanh toán bên dưới.';check()})();
+    const qrImage=document.getElementById('wallet-qr-image'),external=document.getElementById('wallet-payos-external');qrImage.addEventListener('error',()=>{note.textContent='Không tải được ảnh QR. Bạn có thể mở trang thanh toán riêng.';external.classList.remove('hidden')});check()})();
     </script>
+  <?php elseif(!empty($selectedDeposit['payos_checkout_url'])): ?>
+    <div class="alert warn">Chưa có đủ dữ liệu để hiển thị QR riêng cho yêu cầu này. Hãy tạo mã mới để cập nhật thông tin chuyển khoản.</div>
+    <form method="post" action="<?=url('wallet.php')?>" style="margin-top:14px"><?=csrf_field()?><input type="hidden" name="deposit_id" value="<?=(int)$selectedDeposit['id']?>"><input type="hidden" name="regenerate" value="1"><button class="btn" type="submit">Tạo mã QR mới</button></form>
   <?php else: ?>
     <div class="alert err"><?=e($payosError ?: 'Chưa tạo được mã thanh toán cho yêu cầu này.')?></div>
     <form method="post" action="<?=url('wallet.php')?>" style="margin-top:14px"><?=csrf_field()?><input type="hidden" name="deposit_id" value="<?=(int)$selectedDeposit['id']?>"><input type="hidden" name="regenerate" value="1"><button class="btn" type="submit">Thử tạo mã thanh toán</button></form>
