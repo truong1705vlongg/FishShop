@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS wallet_deposits (
   user_id INT UNSIGNED NOT NULL,
   amount BIGINT UNSIGNED NOT NULL,
   reference_mode ENUM('with_code','no_code') NOT NULL DEFAULT 'no_code',
+  request_type ENUM('payos','direct') NOT NULL DEFAULT 'direct',
   sender_name VARCHAR(100) NOT NULL DEFAULT '',
   status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   payos_payment_link_id VARCHAR(80) NULL,

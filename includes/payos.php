@@ -68,7 +68,7 @@ function payos_create_wallet_deposit_link(int $depositId, int $userId): string {
     $st = $pdo->prepare('SELECT d.*,u.fullname,u.email FROM wallet_deposits d JOIN users u ON u.id=d.user_id WHERE d.id=? AND d.user_id=?');
     $st->execute([$depositId, $userId]);
     $deposit = $st->fetch();
-    if (!$deposit || $deposit['status'] !== 'pending') throw new DomainException('Yêu cầu nạp ví không còn chờ thanh toán.');
+    if (!$deposit || $deposit['status'] !== 'pending' || ($deposit['request_type'] ?? 'payos') !== 'payos') throw new DomainException('Yêu cầu nạp ví không còn chờ thanh toán.');
     if (is_string($deposit['payos_checkout_url'] ?? null) && $deposit['payos_checkout_url'] !== '') return $deposit['payos_checkout_url'];
     $config = payos_config();
     if (!payos_ready() || !preg_match('#^https?://#i', $config['base_url'])) throw new RuntimeException('PayOS hoặc URL cửa hàng chưa được cấu hình.');

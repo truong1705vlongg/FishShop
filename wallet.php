@@ -22,10 +22,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('error', 'Số tiền nạp từ 5.000 đ đến 50.000.000 đ.');
         redirect('wallet.php');
     }
+    $requestType = post_string('request_type') ?: 'payos';
+    if (!in_array($requestType, ['payos','direct'], true)) {
+        flash('error', 'Hình thức nạp tiền không hợp lệ.');
+        redirect('wallet.php');
+    }
     try {
-        $st = $pdo->prepare("INSERT INTO wallet_deposits(user_id,amount,reference_mode,status) VALUES(?,?,'no_code','pending')");
-        $st->execute([$uid, (int)$raw]);
+        $st = $pdo->prepare("INSERT INTO wallet_deposits(user_id,amount,reference_mode,request_type,status) VALUES(?,?,'no_code',?,'pending')");
+        $st->execute([$uid, (int)$raw, $requestType]);
         $depositId = (int)$pdo->lastInsertId();
+        if ($requestType === 'direct') {
+            flash('success', 'Đã gửi yêu cầu cộng tiền trực tiếp. Ví sẽ được cộng sau khi quản trị viên duyệt.');
+            redirect('wallet.php?deposit=' . $depositId);
+        }
         try {
             payos_create_wallet_deposit_link($depositId,$uid);
             flash('success','Đã tạo yêu cầu nạp ví. Quét mã bên dưới để thanh toán.');
@@ -39,10 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('wallet.php');
     }
 }$wallet=prize_wallet($pdo,$uid);
-$st=$pdo->prepare('SELECT id,amount,reference_mode,status,payos_payment_link_id,payos_checkout_url,paid_at,created_at FROM wallet_deposits WHERE user_id=? ORDER BY id DESC LIMIT 20');$st->execute([$uid]);$requests=$st->fetchAll();
+$st=$pdo->prepare('SELECT id,amount,reference_mode,request_type,status,payos_payment_link_id,payos_checkout_url,paid_at,created_at FROM wallet_deposits WHERE user_id=? ORDER BY id DESC LIMIT 20');$st->execute([$uid]);$requests=$st->fetchAll();
 $selectedId=(int)($_GET['deposit']??0);$selectedDeposit=null;$payosError='';
-if($selectedId>0){$st=$pdo->prepare('SELECT id,amount,reference_mode,status,payos_payment_link_id,payos_checkout_url,paid_at,created_at FROM wallet_deposits WHERE id=? AND user_id=?');$st->execute([$selectedId,$uid]);$selectedDeposit=$st->fetch()?:null;}
-if($selectedDeposit && $selectedDeposit['status']==='pending' && empty($selectedDeposit['payos_checkout_url'])){
+if($selectedId>0){$st=$pdo->prepare('SELECT id,amount,reference_mode,request_type,status,payos_payment_link_id,payos_checkout_url,paid_at,created_at FROM wallet_deposits WHERE id=? AND user_id=?');$st->execute([$selectedId,$uid]);$selectedDeposit=$st->fetch()?:null;}
+if($selectedDeposit && $selectedDeposit['request_type']==='payos' && $selectedDeposit['status']==='pending' && empty($selectedDeposit['payos_checkout_url'])){
     try{$payosUrl=payos_create_wallet_deposit_link($selectedId,$uid);$selectedDeposit['payos_checkout_url']=$payosUrl;$selectedDeposit['payos_payment_link_id']='created';}
     catch(Throwable $error){$payosError='Chưa tạo được mã thanh toán. Hãy thử lại bằng nút bên dưới.';error_log('FishShop PayOS wallet QR retry failed (' . get_class($error) . ').');}
 }
@@ -54,17 +63,22 @@ $pageTitle='Nạp tiền ví vòng quay';include __DIR__.'/includes/header.php';
   <h1>Nạp tiền vào ví vòng quay</h1><p>Số dư hiện tại: <strong><?=money($wallet['balance'])?></strong></p>
   <form method="post" action="<?=url('wallet.php')?>"><?=csrf_field()?>
     <div class="field"><label for="amount">Số tiền muốn nạp (VNĐ)</label><input id="amount" name="amount" type="number" min="5000" max="50000000" step="1000" required placeholder="Ví dụ: 50000"></div>
-    <div class="wallet-topup-actions"><button class="btn" type="submit">Tạo mã thanh toán</button></div>
+    <div class="wallet-topup-actions"><button class="btn" type="submit" name="request_type" value="payos">Tạo mã thanh toán</button><button class="btn ghost" type="submit" name="request_type" value="direct">Chuyển trực tiếp</button></div>
   </form>
   <p class="hint">Quét mã để thanh toán. Ví sẽ được cộng tự động sau khi giao dịch được xác nhận.</p>
+  <p class="hint">Yêu cầu cộng tiền trực tiếp sẽ được quản trị viên xem xét và duyệt trước khi cộng vào ví.</p>
 </section>
 <style>.wallet-topup-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.wallet-topup-actions button{flex:1;min-width:190px}.wallet-payment-success{padding:24px;text-align:center;border:1px solid var(--teal);border-radius:14px;background:#102b2b}.wallet-payment-success-mark{display:grid;place-items:center;width:54px;height:54px;margin:0 auto 12px;border-radius:50%;background:var(--teal);color:#092c28;font-size:30px;font-weight:800}.wallet-countdown{color:var(--mute);margin:12px 0}</style>
 <?php if($selectedDeposit): ?>
 <section class="card wallet-qr-card" style="margin-top:20px">
-  <h2><?=$selectedDeposit['status']==='approved'?'Nạp ví thành công':'Thanh toán nạp ví'?></h2>
+  <h2><?=$selectedDeposit['status']==='approved'?'Nạp ví thành công':($selectedDeposit['request_type']==='direct'?'Yêu cầu cộng tiền trực tiếp':'Thanh toán nạp ví')?></h2>
   <div class="transfer-details"><div><span>Số tiền nạp</span><strong><?=money($selectedDeposit['amount'])?></strong></div><div><span>Mã yêu cầu</span><strong>#<?= (int)$selectedDeposit['id'] ?></strong></div></div>
   <?php if($selectedDeposit['status']==='approved'): ?>
-    <div class="wallet-payment-success" role="status"><div class="wallet-payment-success-mark" aria-hidden="true">✓</div><h3>Đã nạp tiền vào ví</h3><p>Giao dịch đã được xác nhận. Số dư ví được cập nhật tự động.</p><p class="wallet-countdown">Đang cập nhật số dư sau <strong id="wallet-countdown">3</strong> giây</p><a class="btn" href="<?=url('wallet.php')?>">Xem số dư ngay</a></div>
+    <div class="wallet-payment-success" role="status"><div class="wallet-payment-success-mark" aria-hidden="true">✓</div><h3>Đã nạp tiền vào ví</h3><p><?=$selectedDeposit['request_type']==='direct'?'Quản trị viên đã duyệt yêu cầu. Số dư ví đã được cộng.':'Giao dịch đã được xác nhận. Số dư ví được cập nhật tự động.'?></p><a class="btn" href="<?=url('wallet.php')?>">Xem số dư ngay</a></div>
+  <?php elseif($selectedDeposit['status']==='rejected'): ?>
+    <div class="alert err">Yêu cầu cộng tiền này đã bị từ chối. Vui lòng liên hệ cửa hàng nếu cần hỗ trợ.</div>
+  <?php elseif($selectedDeposit['request_type']==='direct'): ?>
+    <div class="alert warn">Yêu cầu đã gửi và đang chờ quản trị viên duyệt. Số dư ví chỉ tăng sau khi yêu cầu được duyệt.</div>
   <?php elseif($payosWasCancelled): ?>
     <div class="alert warn">Bạn đã đóng hoặc hủy bước thanh toán. Yêu cầu vẫn đang chờ xác nhận.</div>
     <form method="post" action="<?=url('wallet.php')?>" style="margin-top:14px"><?=csrf_field()?><input type="hidden" name="deposit_id" value="<?=(int)$selectedDeposit['id']?>"><input type="hidden" name="regenerate" value="1"><button class="btn" type="submit">Tạo mã QR mới</button></form>
@@ -90,7 +104,7 @@ $pageTitle='Nạp tiền ví vòng quay';include __DIR__.'/includes/header.php';
 <?php endif; ?>
 <section class="card" style="margin-top:20px"><h2>Lịch sử yêu cầu nạp tiền</h2>
   <?php if(!$requests): ?><p>Chưa có yêu cầu nạp tiền.</p><?php else: ?><div class="table-wrap"><table><thead><tr><th>Mã</th><th>Số tiền</th><th>Đối chiếu</th><th>Ngày tạo</th><th>Trạng thái</th></tr></thead><tbody>
-  <?php foreach($requests as $r): ?><tr><td><a href="<?=url('wallet.php?deposit='.(int)$r['id'])?>">#<?=(int)$r['id']?></a></td><td><?=money($r['amount'])?></td><td><?=!empty($r['payos_payment_link_id'])?'Tự động':'Chuyển khoản'?></td><td><?=e($r['created_at'])?></td><td><?=['pending'=>'Chờ thanh toán','approved'=>'Đã nạp ví','rejected'=>'Từ chối'][$r['status']]?></td></tr><?php endforeach; ?>
+  <?php foreach($requests as $r): ?><tr><td><a href="<?=url('wallet.php?deposit='.(int)$r['id'])?>">#<?=(int)$r['id']?></a></td><td><?=money($r['amount'])?></td><td><?=$r['request_type']==='direct'?'Duyệt trực tiếp':'Tự động'?></td><td><?=e($r['created_at'])?></td><td><?=($r['status']==='pending'&&$r['request_type']==='direct')?'Chờ duyệt':(['pending'=>'Chờ thanh toán','approved'=>'Đã nạp ví','rejected'=>'Từ chối'][$r['status']])?></td></tr><?php endforeach; ?>
   </tbody></table></div><?php endif; ?>
 </section>
 <?php include __DIR__.'/includes/footer.php'; ?>

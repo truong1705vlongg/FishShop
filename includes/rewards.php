@@ -20,6 +20,7 @@ function reward_schema(PDO $pdo): void {
     $pdo->exec("CREATE TABLE IF NOT EXISTS wallet_deposits (
         id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, user_id INT UNSIGNED NOT NULL,
         amount BIGINT UNSIGNED NOT NULL, reference_mode ENUM('with_code','no_code') NOT NULL DEFAULT 'no_code',
+        request_type ENUM('payos','direct') NOT NULL DEFAULT 'direct',
         sender_name VARCHAR(100) NOT NULL DEFAULT '', status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
         payos_payment_link_id VARCHAR(80) NULL, payos_checkout_url VARCHAR(500) NULL, paid_at DATETIME NULL,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, reviewed_at DATETIME NULL, reviewed_by INT UNSIGNED NULL,
@@ -42,6 +43,10 @@ function reward_schema(PDO $pdo): void {
     }
     if (!in_array('paid_at', $walletColumns, true)) {
         $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN paid_at DATETIME NULL AFTER payos_checkout_url");
+    }
+    if (!in_array('request_type', $walletColumns, true)) {
+        $pdo->exec("ALTER TABLE wallet_deposits ADD COLUMN request_type ENUM('payos','direct') NOT NULL DEFAULT 'direct' AFTER reference_mode");
+        $pdo->exec("UPDATE wallet_deposits SET request_type='payos' WHERE payos_payment_link_id IS NOT NULL");
     }
     $hasPayosLinkIndex = (int)$pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='wallet_deposits' AND INDEX_NAME='uq_wallet_deposit_payos_link'")->fetchColumn();
     if (!$hasPayosLinkIndex) $pdo->exec("ALTER TABLE wallet_deposits ADD UNIQUE KEY uq_wallet_deposit_payos_link (payos_payment_link_id)");

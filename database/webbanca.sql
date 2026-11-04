@@ -618,6 +618,7 @@ CREATE TABLE `wallet_deposits` (
   `user_id` int(10) UNSIGNED NOT NULL,
   `amount` bigint(20) UNSIGNED NOT NULL,
   `reference_mode` enum('with_code','no_code') NOT NULL DEFAULT 'with_code',
+  `request_type` enum('payos','direct') NOT NULL DEFAULT 'direct',
   `sender_name` varchar(100) NOT NULL DEFAULT '',
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   `payos_payment_link_id` varchar(80) DEFAULT NULL,

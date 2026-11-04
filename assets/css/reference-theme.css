@@ -538,7 +538,7 @@ input::placeholder, textarea::placeholder { color:var(--mute); }
 .admin-brand-mark { display:grid; place-items:center; width:40px; height:40px; flex:none; border-radius:50%; background:var(--teal); color:#092c28; font-size:20px; }
 .admin-brand small { display:block; margin-top:2px; color:var(--mute); font-size:10px; letter-spacing:1px; }
 .admin-side-nav { display:grid; gap:6px; margin-top:20px; }
-.admin-side-nav a, .admin-side-bottom > a, .admin-side-bottom button { display:flex; align-items:center; min-height:44px; padding:9px 12px; border:0; border-radius:8px; background:transparent; color:#c2cfdb; font:inherit; font-size:14px; text-align:left; text-decoration:none; cursor:pointer; }
+.admin-side-nav a, .admin-side-bottom > a, .admin-side-bottom button { display:flex; align-items:center; min-height:44px; padding:9px 12px; border:0; border-radius:8px; background:transparent; color:#c2cfdb; font:inherit; font-size:16px; text-align:left; text-decoration:none; cursor:pointer; }
 .admin-side-nav a:hover, .admin-side-bottom > a:hover, .admin-side-bottom button:hover { background:#17283a; color:var(--ink); }
 .admin-side-nav a.active { background:#1a2b3d; color:var(--teal); box-shadow:inset 3px 0 var(--teal); }
 .admin-side-bottom { display:grid; gap:4px; margin-top:auto; padding-top:14px; border-top:1px solid var(--line); }
