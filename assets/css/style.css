@@ -197,7 +197,8 @@ td.num, th.num { text-align:right; white-space:nowrap; }
 .form-card { max-width:680px; }
 .preview { width:140px; height:140px; border-radius:12px; object-fit:cover; border:1px solid var(--line); background:var(--bg); margin-bottom:10px; }
 .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-.profile { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:28px; margin:28px 0 48px; align-items:start; }
+.profile { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr); gap:24px; margin:28px 0 48px; align-items:start; }
+.profile-side { display:grid; gap:24px; min-width:0; }
 .rank-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:18px 0 14px; }
 .rank-heading strong { color:var(--teal); font-size:20px; }
 .rank-badge { display:inline-flex; align-items:center; padding:5px 14px; border:1px solid var(--teal); border-radius:20px; color:var(--teal); font-weight:700; }
@@ -215,6 +216,7 @@ td.num, th.num { text-align:right; white-space:nowrap; }
 @media (max-width:1100px) { .product-list { grid-template-columns:repeat(3,minmax(0,1fr)); } .stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:900px) {
   .detail, .cart, .pay-box, .profile { grid-template-columns:1fr; }
+  .profile-side { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .order-summary { position:static; }
   .menu-btn { display:block; }
   .nav { display:none; position:absolute; top:64px; left:0; right:0; flex-direction:column; align-items:stretch; gap:12px; padding:16px 20px; background:var(--bg); border-bottom:1px solid var(--line); margin:0; }
@@ -222,6 +224,6 @@ td.num, th.num { text-align:right; white-space:nowrap; }
   .nav-search input { flex:1; width:auto; }
 }
 @media (max-width:700px) { .product-list { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .two { grid-template-columns:1fr; } .page-intro { padding:22px; } .page-intro h1 { font-size:25px; } .detail { padding:18px; } .detail h1 { font-size:24px; } }
-@media (max-width:560px) { .wallet-transfer-summary { grid-template-columns:1fr; } }
+@media (max-width:560px) { .wallet-transfer-summary, .profile-side { grid-template-columns:1fr; } }
 @media (max-width:420px) { .product .acts { grid-template-columns:1fr; } }
 @media (prefers-reduced-motion:reduce) { * { transition:none !important; scroll-behavior:auto !important; } }

@@ -2,13 +2,13 @@
 // Banner presentation only; no product records are created or changed.
 $heroImages = [
     ['dolia.jpg', 'Dolia — Liên Quân Mobile'],
-    ['gamebanana.jpg', 'Ảnh từ GameBanana'],
+    ['shark-horse.webp', 'Cá mập lai ngựa'],
     ['jotaro.jpg', 'Jotaro và cá heo'],
     ['ca-vien.jpg', 'Cá viên chiên'],
     ['tahm-kench.jpg', 'Tahm Kench — Liên Minh Huyền Thoại'],
 ];
 ?>
-<section class="hero slideshow" id="slideshow" aria-label="Banner cửa hàng" aria-roledescription="trình chiếu">
+<section class="hero slideshow" id="slideshow" aria-laebl="Banner cửa hàng" aria-roledescription="trình chiếu">
   <div class="hero-slides">
     <?php foreach ($heroImages as $i => [$image, $description]): ?>
     <div class="hero-slide <?= $i === 0 ? 'is-active' : '' ?>" role="group" aria-roledescription="slide" aria-label="<?= $i + 1 ?> / 5" aria-hidden="<?= $i === 0 ? 'false' : 'true' ?>" <?= $i === 0 ? '' : 'inert' ?>>
@@ -17,7 +17,7 @@ $heroImages = [
         <p class="hero-label">THẾ GIỚI CÁ CẢNH</p>
         <?php if ($i === 0): ?><h1 class="slide-title">Một góc thiên nhiên.<br>Một chút bình yên.</h1><?php else: ?><h2 class="slide-title">Một góc thiên nhiên.<br>Một chút bình yên.</h2><?php endif; ?>
         <p>Khám phá những sắc màu sống động và tìm loài cá bạn yêu thích cho không gian của mình.</p>
-        <a class="btn" href="#san-pham">Khám phá sản phẩm <span aria-hidden="true">→</span></a>
+        <a class="btn"  href="#san-pham">Khám phá sản phẩm <span aria-hidden="true">→</span></a>
       </div>
     </div>
     <?php endforeach; ?>
